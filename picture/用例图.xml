@@ -1,0 +1,131 @@
+<mxGraphModel dx="1422" dy="757" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+    <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- 系统边界 -->
+        <mxCell id="boundary" value="本科生毕业设计评价系统" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#666666;dashed=1;verticalAlign=top;fontStyle=1;fontSize=14;spacingTop=8;" vertex="1" parent="1">
+            <mxGeometry x="260" y="10" width="660" height="860" as="geometry"/>
+        </mxCell>
+
+        <!-- Actors -->
+        <mxCell id="admin" value="超级管理员" style="shape=actor;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+            <mxGeometry x="150" y="360" width="40" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="teacher" value="教师" style="shape=actor;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+            <mxGeometry x="960" y="300" width="40" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="student" value="学生" style="shape=actor;whiteSpace=wrap;html=1;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+            <mxGeometry x="960" y="700" width="40" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- 公共用例：登录 -->
+        <mxCell id="uc_login" value="登录" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="540" y="50" width="100" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- 第一列：超管用例（蓝色） -->
+        <mxCell id="uc1" value="维护基础数据" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="295" y="120" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc2" value="批量导入数据" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="295" y="175" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc3" value="教师分组管理" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="295" y="230" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc4" value="学生分组管理" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="295" y="285" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc5" value="设定环节对应关系" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="295" y="340" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc6" value="指定指导教师" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="295" y="395" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc7" value="指定评阅教师" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="295" y="450" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc8" value="答辩委员会评定" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="295" y="505" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc9" value="查看所有成绩" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="295" y="560" width="140" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- 第二列：教师用例（绿色） -->
+        <mxCell id="uc10" value="填写任务书/指导书" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="495" y="120" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc11" value="录入开题成绩" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="495" y="175" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc12" value="录入外文翻译成绩" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="495" y="230" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc13" value="录入中期检查成绩" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="495" y="285" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc14" value="填写指导教师评语" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="495" y="340" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc15" value="填写评阅教师评语" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="495" y="395" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc16" value="填写答辩记录" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="495" y="450" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc17" value="录入答辩小组成绩" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="495" y="505" width="140" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- 第三列：学生用例（黄色） -->
+        <mxCell id="uc18" value="查看本人信息" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="695" y="620" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc19" value="查看任务书/指导书" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="695" y="675" width="140" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc20" value="查看成绩与评语" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="695" y="730" width="140" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- 公共用例：导出评价手册 -->
+        <mxCell id="uc_export" value="导出评价手册Word" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+            <mxGeometry x="510" y="800" width="160" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- 连线：超级管理员 -->
+        <mxCell id="e1" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="admin" target="uc_login"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="admin" target="uc1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="admin" target="uc2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e4" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="admin" target="uc3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="admin" target="uc4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e6" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="admin" target="uc5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e7" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="admin" target="uc6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e8" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="admin" target="uc7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e9" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="admin" target="uc8"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e10" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="admin" target="uc9"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e11" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="admin" target="uc_export"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- 连线：教师 -->
+        <mxCell id="e12" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="teacher" target="uc_login"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e13" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="teacher" target="uc10"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e14" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="teacher" target="uc11"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e15" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="teacher" target="uc12"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e16" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="teacher" target="uc13"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e17" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="teacher" target="uc14"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e18" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="teacher" target="uc15"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e19" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="teacher" target="uc16"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e20" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="teacher" target="uc17"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e21" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="teacher" target="uc_export"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- 连线：学生 -->
+        <mxCell id="e22" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="student" target="uc_login"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e23" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="student" target="uc18"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e24" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="student" target="uc19"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e25" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="student" target="uc20"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e26" style="endArrow=none;html=1;strokeColor=#999999;" edge="1" parent="1" source="student" target="uc_export"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+    </root>
+</mxGraphModel>
