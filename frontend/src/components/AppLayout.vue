@@ -15,7 +15,9 @@ import {
   Collection,
   Connection,
   Notebook,
-  Medal
+  Medal,
+  EditPen,
+  Document
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -38,7 +40,10 @@ const adminMenus = [
 ]
 
 const teacherMenus = [
-  { index: '/teacher/dashboard', title: '工作台', icon: Reading }
+  { index: '/teacher/dashboard', title: '工作台', icon: Reading },
+  { index: '/teacher/documents', title: '任务书/指导书', icon: Notebook },
+  { index: '/teacher/score-entry', title: '成绩/评语录入', icon: EditPen },
+  { index: '/teacher/manual-export', title: '评价手册导出', icon: Document }
 ]
 
 const studentMenus = [

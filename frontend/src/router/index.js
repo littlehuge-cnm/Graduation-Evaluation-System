@@ -5,6 +5,9 @@ import AppLayout from '@/components/AppLayout.vue'
 import AdminDashboard from '@/views/admin/AdminDashboard.vue'
 import TeacherDashboard from '@/views/teacher/TeacherDashboard.vue'
 import StudentDashboard from '@/views/student/StudentDashboard.vue'
+import TeacherDocuments from '@/views/teacher/TeacherDocuments.vue'
+import TeacherScoreEntry from '@/views/teacher/TeacherScoreEntry.vue'
+import TeacherManualExport from '@/views/teacher/TeacherManualExport.vue'
 import AdminManagement from '@/views/admin/AdminManagement.vue'
 import TeacherManagement from '@/views/admin/TeacherManagement.vue'
 import StudentManagement from '@/views/admin/StudentManagement.vue'
@@ -102,6 +105,24 @@ const routes = [
         path: 'teacher/dashboard',
         name: 'TeacherDashboard',
         component: TeacherDashboard,
+        meta: { roles: ['teacher'] }
+      },
+      {
+        path: 'teacher/documents',
+        name: 'TeacherDocuments',
+        component: TeacherDocuments,
+        meta: { roles: ['teacher'] }
+      },
+      {
+        path: 'teacher/score-entry',
+        name: 'TeacherScoreEntry',
+        component: TeacherScoreEntry,
+        meta: { roles: ['teacher'] }
+      },
+      {
+        path: 'teacher/manual-export',
+        name: 'TeacherManualExport',
+        component: TeacherManualExport,
         meta: { roles: ['teacher'] }
       },
       {
