@@ -31,7 +31,9 @@ public class Document {
 
     private String content;
 
-    private String status;
+    private Integer status;
+
+    private Integer approvalStatus;
 
     private LocalDateTime submitTime;
 

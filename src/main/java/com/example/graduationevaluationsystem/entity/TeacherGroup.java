@@ -22,4 +22,6 @@ public class TeacherGroup {
     private String secretaryNo;
 
     private String memberNo;
+
+    private Integer groupStatus;
 }

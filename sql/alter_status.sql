@@ -68,6 +68,13 @@ ALTER TABLE t_score_record
 ALTER TABLE t_stage_status
     MODIFY COLUMN status TINYINT NOT NULL DEFAULT 1 COMMENT '状态（1=未开始/2=进行中/3=已完成）';
 
+-- ---------------------------------------------------------------------
+-- 9. 学生组号字段允许为空（t_student）
+--    删除学生分组时，组内学生的 student_group_id 置空
+-- ---------------------------------------------------------------------
+ALTER TABLE t_student
+    MODIFY COLUMN student_group_id INT DEFAULT NULL COMMENT '所属学生组号（删除分组时置空）';
+
 
 -- =====================================================================
 -- 状态编码对照表
