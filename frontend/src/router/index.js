@@ -5,6 +5,15 @@ import AppLayout from '@/components/AppLayout.vue'
 import AdminDashboard from '@/views/admin/AdminDashboard.vue'
 import TeacherDashboard from '@/views/teacher/TeacherDashboard.vue'
 import StudentDashboard from '@/views/student/StudentDashboard.vue'
+import AdminManagement from '@/views/admin/AdminManagement.vue'
+import TeacherManagement from '@/views/admin/TeacherManagement.vue'
+import StudentManagement from '@/views/admin/StudentManagement.vue'
+import TeacherGroupManagement from '@/views/admin/TeacherGroupManagement.vue'
+import StudentGroupManagement from '@/views/admin/StudentGroupManagement.vue'
+import GroupMappingManagement from '@/views/admin/GroupMappingManagement.vue'
+import TeacherStudentManagement from '@/views/admin/TeacherStudentManagement.vue'
+import OperationLog from '@/views/admin/OperationLog.vue'
+import CommitteeEvaluation from '@/views/admin/CommitteeEvaluation.vue'
 
 const routes = [
   {
@@ -33,6 +42,60 @@ const routes = [
         path: 'admin/dashboard',
         name: 'AdminDashboard',
         component: AdminDashboard,
+        meta: { roles: ['admin'] }
+      },
+      {
+        path: 'admin/management',
+        name: 'AdminManagement',
+        component: AdminManagement,
+        meta: { roles: ['admin'] }
+      },
+      {
+        path: 'admin/teachers',
+        name: 'TeacherManagement',
+        component: TeacherManagement,
+        meta: { roles: ['admin'] }
+      },
+      {
+        path: 'admin/students',
+        name: 'StudentManagement',
+        component: StudentManagement,
+        meta: { roles: ['admin'] }
+      },
+      {
+        path: 'admin/teacher-groups',
+        name: 'TeacherGroupManagement',
+        component: TeacherGroupManagement,
+        meta: { roles: ['admin'] }
+      },
+      {
+        path: 'admin/student-groups',
+        name: 'StudentGroupManagement',
+        component: StudentGroupManagement,
+        meta: { roles: ['admin'] }
+      },
+      {
+        path: 'admin/group-mappings',
+        name: 'GroupMappingManagement',
+        component: GroupMappingManagement,
+        meta: { roles: ['admin'] }
+      },
+      {
+        path: 'admin/teacher-students',
+        name: 'TeacherStudentManagement',
+        component: TeacherStudentManagement,
+        meta: { roles: ['admin'] }
+      },
+      {
+        path: 'admin/operation-logs',
+        name: 'OperationLog',
+        component: OperationLog,
+        meta: { roles: ['admin'] }
+      },
+      {
+        path: 'admin/committee-evaluation',
+        name: 'CommitteeEvaluation',
+        component: CommitteeEvaluation,
         meta: { roles: ['admin'] }
       },
       {

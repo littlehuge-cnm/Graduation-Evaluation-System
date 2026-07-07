@@ -8,7 +8,14 @@ import {
   Reading,
   Histogram,
   Tools,
-  SwitchButton
+  SwitchButton,
+  UserFilled,
+  School,
+  OfficeBuilding,
+  Collection,
+  Connection,
+  Notebook,
+  Medal
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -18,7 +25,16 @@ const userStore = useUserStore()
 const activeMenu = computed(() => route.path)
 
 const adminMenus = [
-  { index: '/admin/dashboard', title: '控制台', icon: Histogram }
+  { index: '/admin/dashboard', title: '控制台', icon: Histogram },
+  { index: '/admin/management', title: '管理员管理', icon: UserFilled },
+  { index: '/admin/teachers', title: '教师管理', icon: School },
+  { index: '/admin/students', title: '学生管理', icon: User },
+  { index: '/admin/teacher-groups', title: '教师分组', icon: OfficeBuilding },
+  { index: '/admin/student-groups', title: '学生分组', icon: Collection },
+  { index: '/admin/group-mappings', title: '环节对应关系', icon: Connection },
+  { index: '/admin/teacher-students', title: '师生关系', icon: Tools },
+  { index: '/admin/committee-evaluation', title: '委员会评定', icon: Medal },
+  { index: '/admin/operation-logs', title: '操作日志', icon: Notebook }
 ]
 
 const teacherMenus = [
