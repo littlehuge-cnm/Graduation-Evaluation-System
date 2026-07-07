@@ -35,4 +35,6 @@ public class ScoreRecord {
     private LocalDateTime recordTime;
 
     private LocalDateTime updateTime;
+
+    private Integer recordStatus;
 }

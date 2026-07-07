@@ -21,7 +21,7 @@ public class StageStatus {
 
     private String stage;
 
-    private String status;
+    private Integer status;
 
     private LocalDateTime startTime;
 

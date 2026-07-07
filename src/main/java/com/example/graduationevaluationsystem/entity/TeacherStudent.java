@@ -18,6 +18,8 @@ public class TeacherStudent {
     private String studentNo;
 
     private String teacherNo;
-
+    // 指导,评阅
     private String relationType;
+    // 1 : 已生效, 2 : 已解除
+    private Integer relationStatus;
 }

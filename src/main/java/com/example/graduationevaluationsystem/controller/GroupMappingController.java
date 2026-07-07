@@ -1,12 +1,14 @@
 package com.example.graduationevaluationsystem.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.graduationevaluationsystem.common.Result;
-import com.example.graduationevaluationsystem.entity.GroupMapping;
+import com.example.graduationevaluationsystem.dto.GroupMappingDTO;
 import com.example.graduationevaluationsystem.service.GroupMappingService;
+import com.example.graduationevaluationsystem.vo.GroupMappingVO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,36 +19,47 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/group-mappings")
 @RequiredArgsConstructor
-@Tag(name = "环节对应关系", description = "按环节设定教师组与学生组的对应关系")
+@Tag(name = "环节对应关系管理", description = "按环节设定教师组与学生组的对应关系")
 public class GroupMappingController {
 
     private final GroupMappingService groupMappingService;
 
     @PostMapping
-    public Result<Void> add(@RequestBody GroupMapping groupMapping) {
-        groupMappingService.save(groupMapping);
+    @Operation(summary = "设定环节对应关系", description = "超管按环节（开题/中期/答辩）设定教师组与学生组的对应关系")
+    public Result<Void> add(@Valid @RequestBody GroupMappingDTO dto) {
+        groupMappingService.createMapping(dto.getStage(), dto.getTeacherGroupId(), dto.getStudentGroupId());
         return Result.success();
     }
 
     @PutMapping("/{id}")
-    public Result<Void> update(@PathVariable Integer id, @RequestBody GroupMapping groupMapping) {
-        groupMapping.setId(id);
-        groupMappingService.updateById(groupMapping);
+    @Operation(summary = "修改环节对应关系", description = "超管修改环节对应关系")
+    public Result<Void> update(@Parameter(description = "记录编号") @PathVariable Integer id,
+                               @Valid @RequestBody GroupMappingDTO dto) {
+        groupMappingService.updateMapping(id, dto.getStage(), dto.getTeacherGroupId(), dto.getStudentGroupId());
         return Result.success();
     }
 
     @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Integer id) {
+    @Operation(summary = "删除环节对应关系", description = "超管删除环节对应关系")
+    public Result<Void> delete(@Parameter(description = "记录编号") @PathVariable Integer id) {
         groupMappingService.removeById(id);
         return Result.success();
     }
 
     @GetMapping
-    public Result<List<GroupMapping>> list(@RequestParam(required = false) String stage) {
-        LambdaQueryWrapper<GroupMapping> wrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.hasText(stage)) {
-            wrapper.eq(GroupMapping::getStage, stage);
+    @Operation(summary = "按环节查询对应关系列表", description = "返回对应关系列表（含教师组名、学生组名），可按环节过滤")
+    public Result<List<GroupMappingVO>> list(
+            @Parameter(description = "环节：开题/中期/答辩") @RequestParam(required = false) String stage) {
+        return Result.success(groupMappingService.getListByStage(stage));
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "查询对应关系详情", description = "按编号查询对应关系详情（含教师组名、学生组名）")
+    public Result<GroupMappingVO> getById(@Parameter(description = "记录编号") @PathVariable Integer id) {
+        GroupMappingVO vo = groupMappingService.getMappingById(id);
+        if (vo == null) {
+            return Result.error(404, "环节对应关系不存在");
         }
-        return Result.success(groupMappingService.list(wrapper));
+        return Result.success(vo);
     }
 }

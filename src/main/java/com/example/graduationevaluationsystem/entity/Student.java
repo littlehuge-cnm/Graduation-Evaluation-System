@@ -27,4 +27,8 @@ public class Student {
     private Integer studentGroupId;
 
     private String password;
+
+    private Integer accountStatus;
+
+    private Integer overallStatus;
 }
