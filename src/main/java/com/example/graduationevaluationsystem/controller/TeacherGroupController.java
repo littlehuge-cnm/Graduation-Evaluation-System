@@ -1,5 +1,6 @@
 package com.example.graduationevaluationsystem.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.graduationevaluationsystem.common.Result;
 import com.example.graduationevaluationsystem.dto.GroupStatusDTO;
 import com.example.graduationevaluationsystem.dto.TeacherGroupDTO;
@@ -30,6 +31,23 @@ public class TeacherGroupController {
     @PostMapping
     @Operation(summary = "创建教师分组", description = "超管创建教师分组，每组3人（组长/秘书/普通成员）")
     public Result<Void> add(@Valid @RequestBody TeacherGroupDTO dto) {
+        // 组内判重：组长、秘书、普通成员工号不能重复
+        if (dto.getLeaderNo().equals(dto.getSecretaryNo())
+                || dto.getLeaderNo().equals(dto.getMemberNo())
+                || dto.getSecretaryNo().equals(dto.getMemberNo())) {
+            return Result.error(400, "组内教师工号不能重复");
+        }
+        // 跨组判重：检查教师是否已在其他分组中
+        String[] teacherNos = {dto.getLeaderNo(), dto.getSecretaryNo(), dto.getMemberNo()};
+        for (String teacherNo : teacherNos) {
+            long count = teacherGroupService.count(new LambdaQueryWrapper<TeacherGroup>()
+                    .and(w -> w.eq(TeacherGroup::getLeaderNo, teacherNo)
+                            .or().eq(TeacherGroup::getSecretaryNo, teacherNo)
+                            .or().eq(TeacherGroup::getMemberNo, teacherNo)));
+            if (count > 0) {
+                return Result.error(400, "教师工号 " + teacherNo + " 已在其他分组中，不能重复分组");
+            }
+        }
         TeacherGroup group = new TeacherGroup();
         BeanUtils.copyProperties(dto, group);
         if (group.getGroupStatus() == null) {

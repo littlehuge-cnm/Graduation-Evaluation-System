@@ -53,6 +53,14 @@ public class GroupMappingController {
         return Result.success(groupMappingService.getListByStage(stage));
     }
 
+    @PostMapping("/random-assign")
+    @Operation(summary = "随机分配教师组给学生组",
+               description = "一次性为三个环节（开题/中期/答辩）随机分配教师组给学生组，" +
+                             "同一环节一对一，同一学生组三环节教师组互不相同，覆盖原有分配")
+    public Result<List<GroupMappingVO>> randomAssign() {
+        return Result.success(groupMappingService.randomAssignAll());
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "查询对应关系详情", description = "按编号查询对应关系详情（含教师组名、学生组名）")
     public Result<GroupMappingVO> getById(@Parameter(description = "记录编号") @PathVariable Integer id) {
