@@ -28,6 +28,14 @@ public class StudentGroupServiceImpl extends ServiceImpl<StudentGroupMapper, Stu
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Integer createGroup(String groupName, List<String> studentNos) {
+        //检测学生是否重复分组
+        List<Student> students = studentMapper.selectByIds(studentNos);
+        // 检查是否有学生已分组
+        for (Student student : students) {
+            if (student.getStudentGroupId() != null) {
+                throw new RuntimeException("学生 " + student.getStudentNo() + " 已分组，不能重复分组");
+            }
+        }
         StudentGroup group = new StudentGroup();
         group.setGroupName(groupName);
         // 将学号列表转为逗号分隔字符串存入学生组表
