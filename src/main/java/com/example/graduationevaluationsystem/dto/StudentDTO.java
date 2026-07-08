@@ -24,7 +24,6 @@ public class StudentDTO {
 
     private String grade;
 
-    @NotNull(message = "所属学生组号不能为空")
     private Integer studentGroupId;
 
     @NotBlank(message = "密码不能为空")

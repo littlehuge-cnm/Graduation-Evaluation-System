@@ -1,0 +1,235 @@
+<mxGraphModel dx="1422" dy="757" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+    <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="本科生毕业设计评价系统 - 系统架构图" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;whiteSpace=wrap;" vertex="1" parent="1">
+            <mxGeometry x="400" y="20" width="600" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== 客户端层 ==================== -->
+        <mxCell id="client_layer" value="客户端层" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4;" vertex="1" parent="1">
+            <mxGeometry x="60" y="80" width="1280" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="browser" value="浏览器&#xa;(Web Browser)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+            <mxGeometry x="300" y="100" width="140" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="swagger_ui" value="Swagger UI&#xa;(API 文档)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+            <mxGeometry x="560" y="100" width="140" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="vue_front" value="Vue 3 前端&#xa;(待开发)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;dashed=1;" vertex="1" parent="1">
+            <mxGeometry x="820" y="100" width="140" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== Controller 层 ==================== -->
+        <mxCell id="ctrl_layer" value="Controller 层 (REST API, 统一前缀 /api)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4;" vertex="1" parent="1">
+            <mxGeometry x="60" y="190" width="1280" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="auth_ctrl" value="AuthController&#xa;/api/auth&#xa;登录/认证/改密" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="80" y="220" width="130" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="admin_ctrl" value="AdminController&#xa;/api/admins&#xa;管理员管理" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="220" y="220" width="130" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="student_ctrl" value="StudentController&#xa;/api/students&#xa;学生管理/导入" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="360" y="220" width="130" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="teacher_ctrl" value="TeacherController&#xa;/api/teachers&#xa;教师管理/导入" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="500" y="220" width="130" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="sg_ctrl" value="StudentGroupCtrl&#xa;/api/student-groups&#xa;学生分组" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="640" y="220" width="130" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="tg_ctrl" value="TeacherGroupCtrl&#xa;/api/teacher-groups&#xa;教师分组" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="780" y="220" width="130" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="gm_ctrl" value="GroupMappingCtrl&#xa;/api/group-mappings&#xa;环节对应关系" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="920" y="220" width="130" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="ts_ctrl" value="TeacherStudentCtrl&#xa;/api/teacher-students&#xa;师生关系" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="1060" y="220" width="130" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="doc_ctrl" value="DocumentController&#xa;/api/documents&#xa;文档审批" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="1200" y="220" width="130" height="55" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="score_ctrl" value="ScoreRecordCtrl&#xa;/api/score-records&#xa;评价记录" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="150" y="285" width="130" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="stage_ctrl" value="StageStatusCtrl&#xa;/api/stage-status&#xa;环节状态" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="290" y="285" width="130" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="export_ctrl" value="ManualExportCtrl&#xa;/api/manual-export&#xa;手册导出" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="430" y="285" width="130" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="log_ctrl" value="OperationLogCtrl&#xa;/api/operation-logs&#xa;操作日志" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="570" y="285" width="130" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="account_ctrl" value="AccountController&#xa;/api/accounts&#xa;账号状态" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="710" y="285" width="130" height="55" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== 公共层 ==================== -->
+        <mxCell id="common_layer" value="公共层 (Common)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4;" vertex="1" parent="1">
+            <mxGeometry x="990" y="190" width="350" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="jwt_utils" value="JwtUtils&#xa;JWT 生成/验证&#xa;(Hutool, 24h)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="1010" y="285" width="130" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="result_wrap" value="Result&lt;T&gt; / PageResult&lt;T&gt;&#xa;统一响应封装" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="1150" y="285" width="170" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="enums_box" value="Enums (8个)&#xa;ItemType(核心) | AccountStatus | ApprovalStatus | DocumentStatus&#xa;GroupStatus | OverallStatus | RecordStatus | StageStatusType" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;align=center;" vertex="1" parent="1">
+            <mxGeometry x="1010" y="220" width="310" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== Service 层 ==================== -->
+        <mxCell id="svc_layer" value="Service 层 (业务逻辑)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4;" vertex="1" parent="1">
+            <mxGeometry x="60" y="380" width="1280" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="auth_svc" value="AuthService&#xa;认证/登录/密码" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="80" y="410" width="120" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="student_svc" value="StudentService&#xa;学生CRUD/导入" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="210" y="410" width="120" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="teacher_svc" value="TeacherService&#xa;教师CRUD/导入" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="340" y="410" width="120" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="sg_svc" value="StudentGroupSvc&#xa;学生分组" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="470" y="410" width="120" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="tg_svc" value="TeacherGroupSvc&#xa;教师分组/状态" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="600" y="410" width="120" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="gm_svc" value="GroupMappingSvc&#xa;环节对应/冲突校验" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="730" y="410" width="120" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="ts_svc" value="TeacherStudentSvc&#xa;师生关系" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="860" y="410" width="120" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="doc_svc" value="DocumentService&#xa;文档/两级审批" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="990" y="410" width="120" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="score_svc" value="ScoreRecordSvc&#xa;评价记录/加权" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="1120" y="410" width="120" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="stage_svc" value="StageStatusSvc&#xa;环节状态流转" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="1250" y="410" width="80" height="45" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="export_svc" value="ManualExportService&#xa;Word 手册导出 (Apache POI) — 最复杂" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+            <mxGeometry x="300" y="465" width="300" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="log_svc" value="OperationLogService&#xa;操作日志查询" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="620" y="465" width="180" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="admin_svc" value="AdminService&#xa;管理员CRUD" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="820" y="465" width="140" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== DTO / VO 层 ==================== -->
+        <mxCell id="dto_vo_layer" value="DTO / VO 层 (数据传输)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4;" vertex="1" parent="1">
+            <mxGeometry x="60" y="540" width="1280" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="dto_box" value="DTO (19个) — LoginDTO, StudentDTO, TeacherDTO, DocumentDTO, ScoreRecordDTO, StageStatusDTO, ApprovalDTO, OverallStatusDTO ... (@Valid 参数校验)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="80" y="560" width="620" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="vo_box" value="VO (18个) — LoginVO, UserInfoVO, StudentVO, TeacherVO, DocumentVO, ScoreRecordVO, StageStatusVO, GroupMappingVO ... (响应封装, 隐藏敏感字段)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="710" y="560" width="620" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== Mapper 层 ==================== -->
+        <mxCell id="mapper_layer" value="Mapper 层 (MyBatis-Plus, @MapperScan)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4;" vertex="1" parent="1">
+            <mxGeometry x="60" y="630" width="1280" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="mappers" value="11 个 Mapper 接口 (继承 BaseMapper&lt;T&gt;) — AdminMapper | TeacherMapper | StudentMapper | StudentGroupMapper | TeacherGroupMapper | GroupMappingMapper | TeacherStudentMapper | DocumentMapper | ScoreRecordMapper | StageStatusMapper | OperationLogMapper" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="80" y="655" width="1250" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== Entity 层 ==================== -->
+        <mxCell id="entity_layer" value="Entity 层 (数据库实体)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#b0e3e6;strokeColor=#0e8088;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4;" vertex="1" parent="1">
+            <mxGeometry x="60" y="730" width="1280" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="entities" value="11 个实体 — Admin | Teacher | Student | StudentGroup | TeacherGroup | GroupMapping | TeacherStudent | Document | ScoreRecord | StageStatus | OperationLog" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b0e3e6;strokeColor=#0e8088;fontSize=10;" vertex="1" parent="1">
+            <mxGeometry x="80" y="755" width="1250" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== 数据库 ==================== -->
+        <mxCell id="db_layer" value="数据存储层" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d6b656;strokeColor=#bf9000;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4;" vertex="1" parent="1">
+            <mxGeometry x="60" y="830" width="1280" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="mysql_db" value="MySQL 8.x&#xa;graduation_evaluation&#xa;utf8mb4 / InnoDB&#xa;10 张表" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#d6b656;strokeColor=#bf9000;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+            <mxGeometry x="600" y="845" width="200" height="55" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== 技术栈信息框 ==================== -->
+        <mxCell id="tech_stack" value="技术栈" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4;" vertex="1" parent="1">
+            <mxGeometry x="60" y="940" width="620" height="170" as="geometry"/>
+        </mxCell>
+        <mxCell id="tech_back" value="后端: Spring Boot 3.5.9 + Java 17 + MyBatis-Plus 3.5.9&#xa;安全: Hutool JWT (Bearer Token, 24h)&#xa;文档: Springdoc OpenAPI 2.6.0 (Swagger)&#xa;文件: Apache POI 5.3.0 (Excel/Word)&#xa;校验: Spring Validation (@Valid)&#xa;工具: Lombok, Hutool 5.8.39" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=8;verticalAlign=middle;" vertex="1" parent="1">
+            <mxGeometry x="80" y="965" width="580" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== 角色信息框 ==================== -->
+        <mxCell id="role_box" value="用户角色" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=12;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4;" vertex="1" parent="1">
+            <mxGeometry x="700" y="940" width="640" height="170" as="geometry"/>
+        </mxCell>
+        <mxCell id="role_admin" value="超级管理员&#xa;admin / admin123&#xa;管理员CRUD/账号管理/&#xa;委员会评定/手册导出/日志" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;align=center;" vertex="1" parent="1">
+            <mxGeometry x="720" y="970" width="190" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="role_teacher" value="教师&#xa;指导/评阅/组长/秘书/成员&#xa;文档填写/审批/评价录入/&#xa;学生管理/分组管理" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=center;" vertex="1" parent="1">
+            <mxGeometry x="925" y="970" width="190" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="role_student" value="学生&#xa;查看文档/评价记录/&#xa;环节进度/手册下载&#xa;(整体进度状态跟踪)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=center;" vertex="1" parent="1">
+            <mxGeometry x="1130" y="970" width="190" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="role_note" value="三端用户通过 JWT Token 中的 userType 字段区分，请求头 Authorization: Bearer &lt;token&gt;" style="text;html=1;fontSize=9;align=center;verticalAlign=middle;" vertex="1" parent="1">
+            <mxGeometry x="720" y="1060" width="600" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== 箭头连接 ==================== -->
+        <!-- 客户端 -> Controller -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="browser" target="auth_ctrl">
+            <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="swagger_ui" target="auth_ctrl">
+            <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=2;endArrow=block;endFill=1;dashed=1;" edge="1" parent="1" source="vue_front" target="auth_ctrl">
+            <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_http" value="HTTP / REST API (JSON)" style="text;html=1;fontSize=10;align=center;verticalAlign=middle;fillColor=#ffffff;" vertex="1" parent="1">
+            <mxGeometry x="600" y="165" width="200" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Controller -> Service -->
+        <mxCell id="e_call" value="调用" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=2;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="ctrl_layer" target="svc_layer">
+            <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Service -> DTO/VO -->
+        <mxCell id="e_dto" value="数据转换" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d79b00;strokeWidth=2;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="svc_layer" target="dto_vo_layer">
+            <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- DTO/VO -> Mapper -->
+        <mxCell id="e_map" value="持久化" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#10739e;strokeWidth=2;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="dto_vo_layer" target="mapper_layer">
+            <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Mapper -> Entity -->
+        <mxCell id="e_ent" value="映射" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0e8088;strokeWidth=2;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="mapper_layer" target="entity_layer">
+            <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Entity -> DB -->
+        <mxCell id="e_db" value="SQL" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#bf9000;strokeWidth=2;endArrow=block;endFill=1;fontSize=10;" edge="1" parent="1" source="entity_layer" target="db_layer">
+            <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+    </root>
+</mxGraphModel>

@@ -52,6 +52,9 @@ public class StudentController {
         if (student.getOverallStatus() == null) {
             student.setOverallStatus(1);
         }
+        if (student.getStudentGroupId() == null) {
+            student.setStudentGroupId(null);
+        }
         studentService.save(student);
         return Result.success();
     }
