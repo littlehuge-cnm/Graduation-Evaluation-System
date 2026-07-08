@@ -16,35 +16,39 @@ import java.util.List;
 public interface StudentGroupMapper extends BaseMapper<StudentGroup> {
 
     /**
-     * 查询全部分组（含组内学生数量）
+     * 查询全部分组（含组内学生数量，基于 student_no 字段统计）
      */
     @Select("""
-            SELECT g.group_id, g.group_name,
-                   (SELECT COUNT(*) FROM t_student s WHERE s.student_group_id = g.group_id) AS student_count
+            SELECT g.group_id, g.group_name, g.student_no,
+                   IFNULL(LENGTH(g.student_no) - LENGTH(REPLACE(g.student_no, ',', '')) + 1, 0) AS student_count
             FROM t_student_group g
             ORDER BY g.group_id
             """)
     List<StudentGroupVO> selectAllGroups();
 
     /**
-     * 按分组编号查询详情（含组内学生数量）
+     * 按分组编号查询详情
      */
     @Select("""
-            SELECT g.group_id, g.group_name,
-                   (SELECT COUNT(*) FROM t_student s WHERE s.student_group_id = g.group_id) AS student_count
+            SELECT g.group_id, g.group_name, g.student_no
             FROM t_student_group g
             WHERE g.group_id = #{groupId}
             """)
     StudentGroupVO selectGroupById(@Param("groupId") Integer groupId);
 
     /**
-     * 按分组编号查询组内学生列表
+     * 按学号列表查询学生简要信息
      */
     @Select("""
+            <script>
             SELECT student_no, student_name, class_name, major, grade
             FROM t_student
-            WHERE student_group_id = #{groupId}
+            WHERE student_no IN
+            <foreach collection="studentNos" item="no" open="(" separator="," close=")">
+                #{no}
+            </foreach>
             ORDER BY student_no
+            </script>
             """)
-    List<StudentGroupVO.StudentBriefVO> selectStudentsByGroupId(@Param("groupId") Integer groupId);
+    List<StudentGroupVO.StudentBriefVO> selectStudentsByNos(@Param("studentNos") List<String> studentNos);
 }
