@@ -3,6 +3,7 @@ package com.example.graduationevaluationsystem.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.example.graduationevaluationsystem.entity.GroupMapping;
 import com.example.graduationevaluationsystem.vo.GroupMappingVO;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -53,4 +54,12 @@ public interface GroupMappingMapper extends BaseMapper<GroupMapping> {
             WHERE m.id = #{id}
             """)
     GroupMappingVO selectMappingById(@Param("id") Integer id);
+
+    /**
+     * 清空全部对应关系
+     *
+     * @return 受影响行数
+     */
+    @Delete("DELETE FROM t_group_mapping")
+    int deleteAll();
 }

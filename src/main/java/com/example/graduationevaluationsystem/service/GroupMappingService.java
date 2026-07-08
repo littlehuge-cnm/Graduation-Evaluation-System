@@ -45,4 +45,16 @@ public interface GroupMappingService extends IService<GroupMapping> {
      * @return 对应关系详情
      */
     GroupMappingVO getMappingById(Integer id);
+
+    /**
+     * 随机分配教师组给学生组（覆盖原有分配）
+     * <p>
+     * 一次性为三个环节（开题/中期/答辩）随机分配教师组给学生组：
+     * - 同一环节中，不同学生组分配不同教师组（一对一）
+     * - 同一学生组在三个环节中分配的教师组互不相同
+     * - 先清除所有已有对应关系，再重新分配
+     *
+     * @return 分配结果列表（含教师组名、学生组名）
+     */
+    List<GroupMappingVO> randomAssignAll();
 }
