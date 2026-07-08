@@ -50,7 +50,7 @@ CREATE TABLE t_student (
     class_name        VARCHAR(50)  DEFAULT NULL COMMENT '班级',
     major             VARCHAR(100) DEFAULT NULL COMMENT '专业',
     grade             VARCHAR(10)  DEFAULT NULL COMMENT '年级',
-    student_group_id  INT          NOT NULL COMMENT '所属学生组号',
+    student_group_id  INT          DEFAULT NULL COMMENT '所属学生组号',
     password          VARCHAR(100) NOT NULL COMMENT '登录密码',
     account_status    VARCHAR(10)  NOT NULL DEFAULT '启用' COMMENT '账号状态（启用/禁用）',
     overall_status    VARCHAR(10)  NOT NULL DEFAULT '待分配' COMMENT '整体进度状态（待分配/进行中/待答辩/已完成/已弃做）',
@@ -64,7 +64,7 @@ DROP TABLE IF EXISTS t_student_group;
 CREATE TABLE t_student_group (
     group_id    INT          NOT NULL AUTO_INCREMENT COMMENT '学生组号',
     group_name  VARCHAR(50)  DEFAULT NULL COMMENT '组名',
-    student_no  VARCHAR(500) DEFAULT NULL COMMENT '组内学号列表（逗号分隔）',
+    student_no  VARCHAR(1000) DEFAULT NULL COMMENT '组内学号列表（逗号分隔）',
     PRIMARY KEY (group_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '学生分组表';
 

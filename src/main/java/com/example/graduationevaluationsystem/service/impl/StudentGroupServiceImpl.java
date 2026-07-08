@@ -21,7 +21,8 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
-public class StudentGroupServiceImpl extends ServiceImpl<StudentGroupMapper, StudentGroup> implements StudentGroupService {
+public class StudentGroupServiceImpl extends ServiceImpl<StudentGroupMapper, StudentGroup>
+        implements StudentGroupService {
 
     private final StudentMapper studentMapper;
 
@@ -36,6 +37,8 @@ public class StudentGroupServiceImpl extends ServiceImpl<StudentGroupMapper, Stu
 
         // 同步更新学生表的 student_group_id（仅作关联）
         if (studentNos != null && !studentNos.isEmpty()) {
+            // 把学生从之前的其他分组中移除，再绑定到新分组
+            removeStudentsFromOldGroups(studentNos, group.getGroupId());
             bindStudents(group.getGroupId(), studentNos);
         }
         return group.getGroupId();
@@ -56,16 +59,25 @@ public class StudentGroupServiceImpl extends ServiceImpl<StudentGroupMapper, Stu
 
         // 更新组内学号（在学生组表上直接操作）
         if (studentNos != null) {
-            // 先解除原有学生的关联
             List<String> oldStudentNos = parseStudentNos(group.getStudentNo());
-            if (!oldStudentNos.isEmpty()) {
-                unbindStudents(oldStudentNos);
+            List<String> newStudentNos = new ArrayList<>(studentNos);
+
+            // 先把新学生从其他旧分组中移除（必须在 unbind 之前查，否则会丢失原分组信息）
+            removeStudentsFromOldGroups(newStudentNos, groupId);
+
+            // 解除当前分组中不再需要的学生关联
+            List<String> toUnbind = oldStudentNos.stream()
+                    .filter(s -> !newStudentNos.contains(s))
+                    .toList();
+            if (!toUnbind.isEmpty()) {
+                unbindStudents(toUnbind);
             }
+
             // 更新学生组表的 student_no 字段
-            group.setStudentNo(joinStudentNos(studentNos));
+            group.setStudentNo(joinStudentNos(newStudentNos));
             // 绑定新学生的 student_group_id
-            if (!studentNos.isEmpty()) {
-                bindStudents(groupId, studentNos);
+            if (!newStudentNos.isEmpty()) {
+                bindStudents(groupId, newStudentNos);
             }
         }
 
@@ -92,7 +104,9 @@ public class StudentGroupServiceImpl extends ServiceImpl<StudentGroupMapper, Stu
 
     @Override
     public List<StudentGroupVO> getAllGroups() {
-        return baseMapper.selectAllGroups();
+        List<StudentGroupVO> groups = baseMapper.selectAllGroups();
+        groups.forEach(this::populateGroupStudents);
+        return groups;
     }
 
     @Override
@@ -101,7 +115,11 @@ public class StudentGroupServiceImpl extends ServiceImpl<StudentGroupMapper, Stu
         if (vo == null) {
             return null;
         }
-        // 根据 student_no 字段解析学号，查询学生详细信息
+        populateGroupStudents(vo);
+        return vo;
+    }
+
+    private void populateGroupStudents(StudentGroupVO vo) {
         List<String> studentNos = parseStudentNos(vo.getStudentNo());
         if (studentNos.isEmpty()) {
             vo.setStudents(new ArrayList<>());
@@ -109,7 +127,6 @@ public class StudentGroupServiceImpl extends ServiceImpl<StudentGroupMapper, Stu
             List<StudentGroupVO.StudentBriefVO> students = baseMapper.selectStudentsByNos(studentNos);
             vo.setStudents(students != null ? students : new ArrayList<>());
         }
-        return vo;
     }
 
     // ==================== 内部方法 ====================
@@ -143,7 +160,7 @@ public class StudentGroupServiceImpl extends ServiceImpl<StudentGroupMapper, Stu
     private void bindStudents(Integer groupId, List<String> studentNos) {
         LambdaUpdateWrapper<Student> wrapper = new LambdaUpdateWrapper<>();
         wrapper.in(Student::getStudentNo, studentNos)
-               .set(Student::getStudentGroupId, groupId);
+                .set(Student::getStudentGroupId, groupId);
         studentMapper.update(null, wrapper);
     }
 
@@ -153,7 +170,40 @@ public class StudentGroupServiceImpl extends ServiceImpl<StudentGroupMapper, Stu
     private void unbindStudents(List<String> studentNos) {
         LambdaUpdateWrapper<Student> wrapper = new LambdaUpdateWrapper<>();
         wrapper.in(Student::getStudentNo, studentNos)
-               .set(Student::getStudentGroupId, null);
+                .set(Student::getStudentGroupId, null);
         studentMapper.update(null, wrapper);
+    }
+
+    /**
+     * 将指定学号列表的学生从他们所在的其他分组中移除
+     */
+    private void removeStudentsFromOldGroups(List<String> studentNos, Integer excludeGroupId) {
+        if (studentNos == null || studentNos.isEmpty()) {
+            return;
+        }
+        List<Student> existingStudents = studentMapper.selectBatchIds(studentNos);
+        if (existingStudents == null) {
+            return;
+        }
+        for (Student student : existingStudents) {
+            Integer oldGroupId = student.getStudentGroupId();
+            if (oldGroupId != null && !oldGroupId.equals(excludeGroupId)) {
+                removeStudentNoFromGroup(oldGroupId, student.getStudentNo());
+            }
+        }
+    }
+
+    /**
+     * 从指定分组的 student_no 中移除某个学号
+     */
+    private void removeStudentNoFromGroup(Integer groupId, String studentNo) {
+        StudentGroup group = getById(groupId);
+        if (group == null || group.getStudentNo() == null || group.getStudentNo().isBlank()) {
+            return;
+        }
+        List<String> nos = new ArrayList<>(parseStudentNos(group.getStudentNo()));
+        nos.remove(studentNo);
+        group.setStudentNo(joinStudentNos(nos));
+        updateById(group);
     }
 }

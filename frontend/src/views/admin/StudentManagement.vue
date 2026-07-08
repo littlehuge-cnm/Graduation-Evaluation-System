@@ -3,6 +3,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getStudentList, addStudent, updateStudent, deleteStudent, importStudents } from '@/api/student.js'
 import { getStudentGroupList } from '@/api/studentGroup.js'
+import { updateAccountStatus } from '@/api/account.js'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -127,6 +128,20 @@ async function handleDelete(row) {
   }
 }
 
+async function handleStatusChange(row) {
+  try {
+    await updateAccountStatus({
+      userType: 'student',
+      username: row.studentNo,
+      accountStatus: row.accountStatus
+    })
+    ElMessage.success('状态更新成功')
+  } catch (error) {
+    row.accountStatus = row.accountStatus === 1 ? 2 : 1
+    ElMessage.error(error.message || '状态更新失败')
+  }
+}
+
 async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
@@ -206,25 +221,17 @@ onMounted(() => {
       <template #header>
         <div class="card-header">
           <div class="search-bar">
-            <el-input v-model="keyword" placeholder="按学号/姓名搜索" clearable style="width: 180px;" @keyup.enter="handleSearch" />
+            <el-input v-model="keyword" placeholder="按学号/姓名搜索" clearable style="width: 180px;"
+              @keyup.enter="handleSearch" />
             <el-select v-model="groupId" placeholder="按学生组筛选" clearable style="width: 160px;">
-              <el-option
-                v-for="group in groupOptions"
-                :key="group.groupId"
-                :label="group.groupName"
-                :value="group.groupId"
-              />
+              <el-option v-for="group in groupOptions" :key="group.groupId" :label="group.groupName"
+                :value="group.groupId" />
             </el-select>
             <el-button type="primary" @click="handleSearch">搜索</el-button>
           </div>
           <div>
-            <el-upload
-              action=""
-              :before-upload="handleImport"
-              :show-file-list="false"
-              accept=".xlsx,.xls,.csv"
-              style="display: inline-block; margin-right: 12px;"
-            >
+            <el-upload action="" :before-upload="handleImport" :show-file-list="false" accept=".xlsx,.xls,.csv"
+              style="display: inline-block; margin-right: 12px;">
               <el-button>批量导入</el-button>
             </el-upload>
             <el-button type="primary" @click="handleAdd">新增学生</el-button>
@@ -240,9 +247,10 @@ onMounted(() => {
         <el-table-column prop="major" label="专业" min-width="140" />
         <el-table-column prop="grade" label="年级" width="100" />
         <el-table-column prop="studentGroupName" label="学生组" min-width="120" />
-        <el-table-column prop="accountStatusDesc" label="账号状态" width="100">
+        <el-table-column prop="accountStatusDesc" label="账号状态" width="120">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.accountStatus)">{{ row.accountStatusDesc || '未知' }}</el-tag>
+            <el-switch v-model="row.accountStatus" :active-value="1" :inactive-value="2" active-text="启用"
+              inactive-text="禁用" inline-prompt @change="handleStatusChange(row)" />
           </template>
         </el-table-column>
         <el-table-column prop="overallStatusDesc" label="整体进度" width="100" />
@@ -254,16 +262,9 @@ onMounted(() => {
         </el-table-column>
       </el-table>
 
-      <el-pagination
-        v-model:current-page="pagination.pageNum"
-        v-model:page-size="pagination.pageSize"
-        :total="pagination.total"
-        :page-sizes="[10, 20, 50]"
-        layout="total, sizes, prev, pager, next, jumper"
-        class="pagination"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-      />
+      <el-pagination v-model:current-page="pagination.pageNum" v-model:page-size="pagination.pageSize"
+        :total="pagination.total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next, jumper"
+        class="pagination" @size-change="handleSizeChange" @current-change="handleCurrentChange" />
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="520px">
@@ -290,12 +291,8 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="学生组" prop="studentGroupId">
           <el-select v-model="form.studentGroupId" placeholder="请选择学生组" style="width: 100%;">
-            <el-option
-              v-for="group in groupOptions"
-              :key="group.groupId"
-              :label="group.groupName"
-              :value="group.groupId"
-            />
+            <el-option v-for="group in groupOptions" :key="group.groupId" :label="group.groupName"
+              :value="group.groupId" />
           </el-select>
         </el-form-item>
         <el-form-item label="密码" prop="password">
@@ -309,12 +306,7 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="整体进度">
           <el-select v-model="form.overallStatus" placeholder="请选择整体进度" style="width: 100%;">
-            <el-option
-              v-for="item in overallStatusOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
+            <el-option v-for="item in overallStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
       </el-form>

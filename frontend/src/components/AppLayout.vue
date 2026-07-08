@@ -17,7 +17,8 @@ import {
   Notebook,
   Medal,
   EditPen,
-  Document
+  Document,
+  Timer
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -34,9 +35,11 @@ const adminMenus = [
   { index: '/admin/teacher-groups', title: '教师分组', icon: OfficeBuilding },
   { index: '/admin/student-groups', title: '学生分组', icon: Collection },
   { index: '/admin/group-mappings', title: '环节对应关系', icon: Connection },
-  { index: '/admin/teacher-students', title: '师生关系', icon: Tools },
-  { index: '/admin/committee-evaluation', title: '委员会评定', icon: Medal },
-  { index: '/admin/operation-logs', title: '操作日志', icon: Notebook }
+  { index: '/admin/teacher-students', title: '师生关系', icon: Connection },
+  { index: '/admin/stage-status', title: '环节状态', icon: Timer },
+  { index: '/admin/operation-logs', title: '操作日志', icon: Notebook },
+  { index: '/admin/manual-export', title: '评价手册导出', icon: Document },
+  { index: '/admin/committee-evaluation', title: '委员会评定', icon: Medal }
 ]
 
 const teacherMenus = [
@@ -84,16 +87,12 @@ function handleSelect(index) {
       <div class="logo">
         <span>毕业设计评价系统</span>
       </div>
-      <el-menu
-        :default-active="activeMenu"
-        class="layout-menu"
-        background-color="#304156"
-        text-color="#bfcbd9"
-        active-text-color="#409EFF"
-        @select="handleSelect"
-      >
+      <el-menu :default-active="activeMenu" class="layout-menu" background-color="#304156" text-color="#bfcbd9"
+        active-text-color="#409EFF" @select="handleSelect">
         <el-menu-item v-for="menu in menus" :key="menu.index" :index="menu.index">
-          <el-icon><component :is="menu.icon" /></el-icon>
+          <el-icon>
+            <component :is="menu.icon" />
+          </el-icon>
           <span>{{ menu.title }}</span>
         </el-menu-item>
       </el-menu>
