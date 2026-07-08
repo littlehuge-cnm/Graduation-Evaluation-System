@@ -78,7 +78,7 @@ CREATE TABLE t_teacher_group (
     leader_no      VARCHAR(20)  NOT NULL COMMENT '组长工号',
     secretary_no   VARCHAR(20)  NOT NULL COMMENT '秘书工号',
     member_no      VARCHAR(20)  NOT NULL COMMENT '普通成员工号',
-    group_status   VARCHAR(10)  NOT NULL DEFAULT '待启用' COMMENT '分组状态（待启用/已启用/已停用）',
+    group_status   VARCHAR(10)  NOT NULL DEFAULT '已启用' COMMENT '分组状态（待启用/已启用/已停用）',
     PRIMARY KEY (group_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '教师分组表';
 

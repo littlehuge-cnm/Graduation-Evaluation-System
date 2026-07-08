@@ -1,222 +1,179 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTeacherStudentList, addTeacherStudent, updateTeacherStudent, deleteTeacherStudent, updateRelationStatus } from '@/api/teacherStudent.js'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { getTeacherStudentList, batchAssignTeacherStudent } from '@/api/teacherStudent.js'
 import { getTeacherList } from '@/api/teacher.js'
 import { getStudentList } from '@/api/student.js'
 
 const loading = ref(false)
-const tableData = ref([])
+const students = ref([])
+const relations = ref([])
 const teacherOptions = ref([])
-const studentOptions = ref([])
-const filters = reactive({
-  teacherNo: '',
-  studentNo: '',
-  relationType: ''
-})
+const keyword = ref('')
+const selectedStudents = ref([])
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
-const isEdit = ref(false)
+const dialogMode = ref('single')
+const currentStudent = ref(null)
 const formRef = ref(null)
 const form = reactive({
-  id: null,
-  studentNo: '',
-  teacherNo: '',
-  relationType: '指导',
-  relationStatus: 1
+  guideTeacherNo: '',
+  reviewTeacherNo: ''
 })
 
 const rules = {
-  studentNo: [{ required: true, message: '请选择学生', trigger: 'change' }],
-  teacherNo: [{ required: true, message: '请选择教师', trigger: 'change' }],
-  relationType: [{ required: true, message: '请选择关系类型', trigger: 'change' }]
+  guideTeacherNo: [{ required: false }],
+  reviewTeacherNo: [{ required: false }]
 }
 
-const relationTypeOptions = ['指导', '评阅']
-const relationStatusOptions = [
-  { label: '生效', value: 1 },
-  { label: '已解除', value: 2 }
-]
+const tableData = computed(() => {
+  const k = keyword.value.trim()
+  const list = students.value.map(s => {
+    const guide = relations.value.find(r => r.studentNo === s.studentNo && r.relationType === '指导' && r.relationStatus === 1)
+    const review = relations.value.find(r => r.studentNo === s.studentNo && r.relationType === '评阅' && r.relationStatus === 1)
+    return {
+      ...s,
+      guideTeacherNo: guide?.teacherNo || '',
+      guideTeacherName: guide?.teacherName || '未分配',
+      reviewTeacherNo: review?.teacherNo || '',
+      reviewTeacherName: review?.teacherName || '未分配'
+    }
+  })
+  if (!k) return list
+  return list.filter(s => s.studentNo?.includes(k) || s.studentName?.includes(k))
+})
 
 async function fetchData() {
   loading.value = true
   try {
-    const res = await getTeacherStudentList({
-      teacherNo: filters.teacherNo || undefined,
-      studentNo: filters.studentNo || undefined,
-      relationType: filters.relationType || undefined
-    })
-    tableData.value = res || []
+    const [sRes, rRes, tRes] = await Promise.all([
+      getStudentList({ pageNum: 1, pageSize: 1000 }),
+      getTeacherStudentList({}),
+      getTeacherList({ pageNum: 1, pageSize: 1000 })
+    ])
+    students.value = sRes.list || []
+    relations.value = rRes || []
+    teacherOptions.value = tRes.list || []
+  } catch (error) {
+    ElMessage.error(error.message || '获取数据失败')
   } finally {
     loading.value = false
   }
 }
 
-async function fetchOptions() {
-  try {
-    const [tRes, sRes] = await Promise.all([
-      getTeacherList({ pageNum: 1, pageSize: 1000 }),
-      getStudentList({ pageNum: 1, pageSize: 1000 })
-    ])
-    teacherOptions.value = tRes.list || []
-    studentOptions.value = sRes.list || []
-  } catch (error) {
-    console.error(error)
-  }
-}
-
-function handleSearch() {
-  fetchData()
-}
-
-function handleAdd() {
-  isEdit.value = false
-  dialogTitle.value = '新增师生关系'
-  Object.assign(form, {
-    id: null,
-    studentNo: '',
-    teacherNo: '',
-    relationType: '指导',
-    relationStatus: 1
-  })
-  dialogVisible.value = true
-}
-
 function handleEdit(row) {
-  isEdit.value = true
-  dialogTitle.value = '编辑师生关系'
-  Object.assign(form, {
-    id: row.id,
-    studentNo: row.studentNo,
-    teacherNo: row.teacherNo,
-    relationType: row.relationType,
-    relationStatus: row.relationStatus
-  })
+  currentStudent.value = row
+  dialogMode.value = 'single'
+  dialogTitle.value = `分配教师 - ${row.studentName}（${row.studentNo}）`
+  form.guideTeacherNo = row.guideTeacherNo || ''
+  form.reviewTeacherNo = row.reviewTeacherNo || ''
   dialogVisible.value = true
 }
 
-async function handleDelete(row) {
-  try {
-    await ElMessageBox.confirm('确定删除该师生关系吗？', '提示', { type: 'warning' })
-    await deleteTeacherStudent(row.id)
-    ElMessage.success('删除成功')
-    fetchData()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error(error.message || '删除失败')
+function handleBatchAssign() {
+  if (selectedStudents.value.length === 0) {
+    ElMessage.warning('请至少选择一名学生')
+    return
+  }
+  currentStudent.value = null
+  dialogMode.value = 'batch'
+  dialogTitle.value = `批量分配教师（已选 ${selectedStudents.value.length} 人）`
+  form.guideTeacherNo = ''
+  form.reviewTeacherNo = ''
+  dialogVisible.value = true
+}
+
+function validateAssignList(list) {
+  const conflicts = []
+  for (const item of list) {
+    if (item.guideTeacherNo && item.reviewTeacherNo && item.guideTeacherNo === item.reviewTeacherNo) {
+      const s = students.value.find(st => st.studentNo === item.studentNo)
+      conflicts.push(s ? `${s.studentName}（${item.studentNo}）` : item.studentNo)
     }
   }
+  if (conflicts.length > 0) {
+    ElMessage.error(`以下学生的指导教师与评阅教师相同，请修改：${conflicts.join('、')}`)
+    return false
+  }
+  return true
 }
 
-async function handleStatusChange(row) {
-  try {
-    await updateRelationStatus(row.id, row.relationStatus)
-    ElMessage.success('状态更新成功')
-    fetchData()
-  } catch (error) {
-    ElMessage.error(error.message || '状态更新失败')
-    fetchData()
-  }
+function buildSingleList() {
+  return [{
+    studentNo: currentStudent.value.studentNo,
+    guideTeacherNo: form.guideTeacherNo,
+    reviewTeacherNo: form.reviewTeacherNo
+  }]
+}
+
+function buildBatchList() {
+  return selectedStudents.value.map(s => ({
+    studentNo: s.studentNo,
+    guideTeacherNo: form.guideTeacherNo || s.guideTeacherNo,
+    reviewTeacherNo: form.reviewTeacherNo || s.reviewTeacherNo
+  }))
 }
 
 async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
 
-  try {
-    const data = {
-      studentNo: form.studentNo,
-      teacherNo: form.teacherNo,
-      relationType: form.relationType,
-      relationStatus: form.relationStatus
-    }
+  const list = dialogMode.value === 'single' ? buildSingleList() : buildBatchList()
+  if (!validateAssignList(list)) return
 
-    if (isEdit.value) {
-      await updateTeacherStudent(form.id, data)
-      ElMessage.success('修改成功')
-    } else {
-      await addTeacherStudent(data)
-      ElMessage.success('新增成功')
-    }
+  try {
+    await batchAssignTeacherStudent(list)
+    ElMessage.success('分配成功')
     dialogVisible.value = false
+    selectedStudents.value = []
     fetchData()
   } catch (error) {
-    ElMessage.error(error.message || '操作失败')
+    ElMessage.error(error.message || '分配失败')
   }
 }
 
-function getStatusType(status) {
-  return status === 1 ? 'success' : status === 2 ? 'info' : 'info'
+function handleSelectionChange(rows) {
+  selectedStudents.value = rows
 }
 
-function getStatusLabel(status) {
-  const item = relationStatusOptions.find(i => i.value === status)
-  return item ? item.label : '未知'
-}
-
-onMounted(() => {
-  fetchData()
-  fetchOptions()
-})
+onMounted(fetchData)
 </script>
 
 <template>
   <div>
-    <el-page-header title="师生关系管理" />
+    <el-page-header title="教师分配" />
     <el-card class="table-card">
       <template #header>
         <div class="card-header">
-          <div class="search-bar">
-            <el-select v-model="filters.teacherNo" placeholder="按教师筛选" clearable style="width: 180px;">
-              <el-option
-                v-for="teacher in teacherOptions"
-                :key="teacher.teacherNo"
-                :label="`${teacher.teacherNo} - ${teacher.teacherName}`"
-                :value="teacher.teacherNo"
-              />
-            </el-select>
-            <el-select v-model="filters.studentNo" placeholder="按学生筛选" clearable style="width: 180px;">
-              <el-option
-                v-for="student in studentOptions"
-                :key="student.studentNo"
-                :label="`${student.studentNo} - ${student.studentName}`"
-                :value="student.studentNo"
-              />
-            </el-select>
-            <el-select v-model="filters.relationType" placeholder="按关系类型" clearable style="width: 140px;">
-              <el-option v-for="type in relationTypeOptions" :key="type" :label="type" :value="type" />
-            </el-select>
-            <el-button type="primary" @click="handleSearch">搜索</el-button>
-          </div>
-          <el-button type="primary" @click="handleAdd">新增师生关系</el-button>
+          <el-input v-model="keyword" placeholder="搜索学号/姓名" clearable style="width: 220px;" />
+          <el-button type="primary" :disabled="selectedStudents.length === 0" @click="handleBatchAssign">
+            批量分配
+          </el-button>
         </div>
       </template>
 
-      <el-table v-loading="loading" :data="tableData" border>
-        <el-table-column prop="id" label="编号" width="80" />
+      <el-table v-loading="loading" :data="tableData" border @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="55" />
         <el-table-column prop="studentNo" label="学号" min-width="120" />
         <el-table-column prop="studentName" label="学生姓名" min-width="120" />
-        <el-table-column prop="teacherNo" label="工号" min-width="120" />
-        <el-table-column prop="teacherName" label="教师姓名" min-width="120" />
-        <el-table-column prop="relationType" label="关系类型" width="100" />
-        <el-table-column prop="relationStatusDesc" label="状态" width="100">
+        <el-table-column label="指导教师" min-width="180">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.relationStatus)">{{ row.relationStatusDesc || getStatusLabel(row.relationStatus) }}</el-tag>
+            <span>{{ row.guideTeacherName }}</span>
+            <span v-if="row.guideTeacherNo" class="teacher-no">（{{ row.guideTeacherNo }}）</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="评阅教师" min-width="180">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
-            <el-select v-model="row.relationStatus" size="small" style="width: 90px; margin-left: 8px;" @change="handleStatusChange(row)">
-              <el-option
-                v-for="item in relationStatusOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
+            <span>{{ row.reviewTeacherName }}</span>
+            <span v-if="row.reviewTeacherNo" class="teacher-no">（{{ row.reviewTeacherNo }}）</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" link @click="handleEdit(row)">
+              编辑
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -224,37 +181,19 @@ onMounted(() => {
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="学生" prop="studentNo">
-          <el-select v-model="form.studentNo" placeholder="请选择学生" style="width: 100%;" :disabled="isEdit">
-            <el-option
-              v-for="student in studentOptions"
-              :key="student.studentNo"
-              :label="`${student.studentNo} - ${student.studentName}`"
-              :value="student.studentNo"
-            />
+        <el-form-item label="指导教师">
+          <el-select v-model="form.guideTeacherNo" placeholder="请选择指导教师" clearable filterable style="width: 100%;">
+            <el-option v-for="teacher in teacherOptions" :key="teacher.teacherNo"
+              :label="`${teacher.teacherNo} - ${teacher.teacherName}`" :value="teacher.teacherNo" />
           </el-select>
         </el-form-item>
-        <el-form-item label="教师" prop="teacherNo">
-          <el-select v-model="form.teacherNo" placeholder="请选择教师" style="width: 100%;" :disabled="isEdit">
-            <el-option
-              v-for="teacher in teacherOptions"
-              :key="teacher.teacherNo"
-              :label="`${teacher.teacherNo} - ${teacher.teacherName}`"
-              :value="teacher.teacherNo"
-            />
+        <el-form-item label="评阅教师">
+          <el-select v-model="form.reviewTeacherNo" placeholder="请选择评阅教师" clearable filterable style="width: 100%;">
+            <el-option v-for="teacher in teacherOptions" :key="teacher.teacherNo"
+              :label="`${teacher.teacherNo} - ${teacher.teacherName}`" :value="teacher.teacherNo" />
           </el-select>
         </el-form-item>
-        <el-form-item label="关系类型" prop="relationType">
-          <el-radio-group v-model="form.relationType" :disabled="isEdit">
-            <el-radio v-for="type in relationTypeOptions" :key="type" :label="type">{{ type }}</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="isEdit" label="状态">
-          <el-radio-group v-model="form.relationStatus">
-            <el-radio :label="1">生效</el-radio>
-            <el-radio :label="2">已解除</el-radio>
-          </el-radio-group>
-        </el-form-item>
+        <el-alert v-if="dialogMode === 'batch'" title="批量分配时，留空表示保持该学生原有教师不变" type="info" :closable="false" />
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -277,8 +216,9 @@ onMounted(() => {
   gap: 12px;
 }
 
-.search-bar {
-  display: flex;
-  gap: 8px;
+.teacher-no {
+  color: #909399;
+  font-size: 12px;
+  margin-left: 4px;
 }
 </style>

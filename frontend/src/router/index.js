@@ -17,8 +17,8 @@ import GroupMappingManagement from '@/views/admin/GroupMappingManagement.vue'
 import TeacherStudentManagement from '@/views/admin/TeacherStudentManagement.vue'
 import OperationLog from '@/views/admin/OperationLog.vue'
 import StageStatusManagement from '@/views/admin/StageStatusManagement.vue'
-import ManualExportManagement from '@/views/admin/ManualExportManagement.vue'
-import CommitteeEvaluation from '@/views/admin/CommitteeEvaluation.vue'
+import ManualReviewManagement from '@/views/admin/ManualReviewManagement.vue'
+import CommitteeEvaluationManagement from '@/views/admin/CommitteeEvaluationManagement.vue'
 
 const routes = [
   {
@@ -104,15 +104,15 @@ const routes = [
         meta: { roles: ['admin'] }
       },
       {
-        path: 'admin/manual-export',
-        name: 'ManualExportManagement',
-        component: ManualExportManagement,
+        path: 'admin/manual-review',
+        name: 'ManualReviewManagement',
+        component: ManualReviewManagement,
         meta: { roles: ['admin'] }
       },
       {
         path: 'admin/committee-evaluation',
-        name: 'CommitteeEvaluation',
-        component: CommitteeEvaluation,
+        name: 'CommitteeEvaluationManagement',
+        component: CommitteeEvaluationManagement,
         meta: { roles: ['admin'] }
       },
       {

@@ -19,3 +19,7 @@ export function deleteTeacherStudent(id) {
 export function updateRelationStatus(id, status) {
   return request.put(`/teacher-students/${id}/relation-status`, { relationStatus: status })
 }
+
+export function batchAssignTeacherStudent(list) {
+  return request.post('/teacher-students/batch-assign', list)
+}

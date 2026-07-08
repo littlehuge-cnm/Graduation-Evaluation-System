@@ -2,6 +2,7 @@ package com.example.graduationevaluationsystem.controller;
 
 import com.example.graduationevaluationsystem.common.Result;
 import com.example.graduationevaluationsystem.dto.RelationStatusDTO;
+import com.example.graduationevaluationsystem.dto.TeacherStudentBatchAssignDTO;
 import com.example.graduationevaluationsystem.dto.TeacherStudentDTO;
 import com.example.graduationevaluationsystem.entity.TeacherStudent;
 import com.example.graduationevaluationsystem.service.TeacherStudentService;
@@ -40,7 +41,7 @@ public class TeacherStudentController {
     @PutMapping("/{id}")
     @Operation(summary = "修改师生关系", description = "超管修改师生关系记录")
     public Result<Void> update(@Parameter(description = "记录编号") @PathVariable Integer id,
-                               @RequestBody TeacherStudentDTO dto) {
+            @RequestBody TeacherStudentDTO dto) {
         TeacherStudent teacherStudent = new TeacherStudent();
         BeanUtils.copyProperties(dto, teacherStudent);
         teacherStudent.setId(id);
@@ -72,6 +73,13 @@ public class TeacherStudentController {
             @Parameter(description = "记录编号") @PathVariable Integer id,
             @Valid @RequestBody RelationStatusDTO dto) {
         teacherStudentService.updateRelationStatus(id, dto.getRelationStatus());
+        return Result.success();
+    }
+
+    @PostMapping("/batch-assign")
+    @Operation(summary = "批量分配指导/评阅教师", description = "超管为多个学生同时指定指导教师和评阅教师")
+    public Result<Void> batchAssign(@Valid @RequestBody List<TeacherStudentBatchAssignDTO> list) {
+        teacherStudentService.batchAssign(list);
         return Result.success();
     }
 }

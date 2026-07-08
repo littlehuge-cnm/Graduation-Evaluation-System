@@ -3,6 +3,7 @@ package com.example.graduationevaluationsystem.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.graduationevaluationsystem.common.JwtUtils;
 import com.example.graduationevaluationsystem.common.enums.AccountStatus;
+import com.example.graduationevaluationsystem.common.exception.BusinessException;
 import com.example.graduationevaluationsystem.entity.Admin;
 import com.example.graduationevaluationsystem.entity.Student;
 import com.example.graduationevaluationsystem.entity.Teacher;
@@ -44,10 +45,10 @@ public class AuthServiceImpl implements AuthService {
             case "admin" -> {
                 Admin admin = adminService.getById(username);
                 if (admin == null) {
-                    throw new RuntimeException("管理员账号不存在");
+                    throw new BusinessException("管理员账号不存在");
                 }
                 if (!password.equals(admin.getPassword())) {
-                    throw new RuntimeException("密码错误");
+                    throw new BusinessException("密码错误");
                 }
                 accountStatus = admin.getAccountStatus();
                 name = admin.getAdminName();
@@ -55,10 +56,10 @@ public class AuthServiceImpl implements AuthService {
             case "teacher" -> {
                 Teacher teacher = teacherService.getById(username);
                 if (teacher == null) {
-                    throw new RuntimeException("教师工号不存在");
+                    throw new BusinessException("教师工号不存在");
                 }
                 if (!password.equals(teacher.getPassword())) {
-                    throw new RuntimeException("密码错误");
+                    throw new BusinessException("密码错误");
                 }
                 accountStatus = teacher.getAccountStatus();
                 name = teacher.getTeacherName();
@@ -66,19 +67,19 @@ public class AuthServiceImpl implements AuthService {
             case "student" -> {
                 Student student = studentService.getById(username);
                 if (student == null) {
-                    throw new RuntimeException("学号不存在");
+                    throw new BusinessException("学号不存在");
                 }
                 if (!password.equals(student.getPassword())) {
-                    throw new RuntimeException("密码错误");
+                    throw new BusinessException("密码错误");
                 }
                 accountStatus = student.getAccountStatus();
                 name = student.getStudentName();
             }
-            default -> throw new RuntimeException("无效的用户类型：" + userType);
+            default -> throw new BusinessException("无效的用户类型：" + userType);
         }
 
         if (accountStatus != null && accountStatus == AccountStatus.DISABLED.getCode()) {
-            throw new RuntimeException("账号已被禁用，请联系管理员");
+            throw new BusinessException("账号已被禁用，请联系管理员");
         }
 
         String token = JwtUtils.generateToken(userType, username, name);
@@ -117,7 +118,7 @@ public class AuthServiceImpl implements AuthService {
                 // 查询是否为指导教师或评阅教师
                 LambdaQueryWrapper<TeacherStudent> tsWrapper = new LambdaQueryWrapper<>();
                 tsWrapper.eq(TeacherStudent::getTeacherNo, username)
-                         .eq(TeacherStudent::getRelationStatus, 1);
+                        .eq(TeacherStudent::getRelationStatus, 1);
                 List<TeacherStudent> tsList = teacherStudentService.list(tsWrapper);
                 for (TeacherStudent ts : tsList) {
                     if ("指导".equals(ts.getRelationType()) && !identities.contains("指导教师")) {
@@ -131,10 +132,10 @@ public class AuthServiceImpl implements AuthService {
                 // 查询是否为组长或秘书
                 LambdaQueryWrapper<TeacherGroup> tgWrapper = new LambdaQueryWrapper<>();
                 tgWrapper.eq(TeacherGroup::getLeaderNo, username)
-                         .or()
-                         .eq(TeacherGroup::getSecretaryNo, username)
-                         .or()
-                         .eq(TeacherGroup::getMemberNo, username);
+                        .or()
+                        .eq(TeacherGroup::getSecretaryNo, username)
+                        .or()
+                        .eq(TeacherGroup::getMemberNo, username);
                 List<TeacherGroup> tgList = teacherGroupService.list(tgWrapper);
                 for (TeacherGroup tg : tgList) {
                     if (username.equals(tg.getLeaderNo()) && !identities.contains("组长")) {
@@ -156,7 +157,8 @@ public class AuthServiceImpl implements AuthService {
                     vo.setName(student.getStudentName());
                 }
             }
-            default -> {}
+            default -> {
+            }
         }
 
         return vo;

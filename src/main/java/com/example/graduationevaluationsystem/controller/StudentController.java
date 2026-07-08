@@ -66,6 +66,17 @@ public class StudentController {
         Student student = new Student();
         BeanUtils.copyProperties(dto, student);
         student.setStudentNo(studentNo);
+        if (dto.getOverallStatus() == null || dto.getAccountStatus() == null) {
+            Student existing = studentService.getById(studentNo);
+            if (existing != null) {
+                if (dto.getOverallStatus() == null) {
+                    student.setOverallStatus(existing.getOverallStatus());
+                }
+                if (dto.getAccountStatus() == null) {
+                    student.setAccountStatus(existing.getAccountStatus());
+                }
+            }
+        }
         studentService.updateById(student);
         return Result.success();
     }

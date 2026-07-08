@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTeacherGroupList, addTeacherGroup, updateTeacherGroup, deleteTeacherGroup, updateTeacherGroupStatus } from '@/api/teacherGroup.js'
+import { getTeacherGroupList, addTeacherGroup, updateTeacherGroup, deleteTeacherGroup } from '@/api/teacherGroup.js'
 import { getTeacherList } from '@/api/teacher.js'
 
 const loading = ref(false)
@@ -27,12 +27,6 @@ const rules = {
   secretaryNo: [{ required: true, message: '请选择秘书', trigger: 'change' }],
   memberNo: [{ required: true, message: '请选择普通成员', trigger: 'change' }]
 }
-
-const statusOptions = [
-  { label: '待启用', value: 1 },
-  { label: '已启用', value: 2 },
-  { label: '已停用', value: 3 }
-]
 
 async function fetchData() {
   loading.value = true
@@ -62,7 +56,7 @@ function handleAdd() {
     leaderNo: '',
     secretaryNo: '',
     memberNo: '',
-    groupStatus: 1
+    groupStatus: 2
   })
   dialogVisible.value = true
 }
@@ -94,17 +88,6 @@ async function handleDelete(row) {
   }
 }
 
-async function handleStatusChange(row) {
-  try {
-    await updateTeacherGroupStatus(row.groupId, row.groupStatus)
-    ElMessage.success('状态更新成功')
-    fetchData()
-  } catch (error) {
-    ElMessage.error(error.message || '状态更新失败')
-    fetchData()
-  }
-}
-
 async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
@@ -132,20 +115,6 @@ async function handleSubmit() {
   }
 }
 
-function getStatusLabel(status) {
-  const item = statusOptions.find(i => i.value === status)
-  return item ? item.label : '未知'
-}
-
-function getStatusType(status) {
-  switch (status) {
-    case 1: return 'info'
-    case 2: return 'success'
-    case 3: return 'danger'
-    default: return 'info'
-  }
-}
-
 onMounted(() => {
   fetchData()
   fetchTeachers()
@@ -169,23 +138,10 @@ onMounted(() => {
         <el-table-column prop="leaderName" label="组长" min-width="120" />
         <el-table-column prop="secretaryName" label="秘书" min-width="120" />
         <el-table-column prop="memberName" label="普通成员" min-width="120" />
-        <el-table-column prop="groupStatusDesc" label="状态" width="120">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.groupStatus)">{{ row.groupStatusDesc || getStatusLabel(row.groupStatus) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
             <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
-            <el-select v-model="row.groupStatus" size="small" style="width: 90px; margin-left: 8px;" @change="handleStatusChange(row)">
-              <el-option
-                v-for="item in statusOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
           </template>
         </el-table-column>
       </el-table>
@@ -198,42 +154,20 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="组长" prop="leaderNo">
           <el-select v-model="form.leaderNo" placeholder="请选择组长" style="width: 100%;">
-            <el-option
-              v-for="teacher in teacherOptions"
-              :key="teacher.teacherNo"
-              :label="`${teacher.teacherNo} - ${teacher.teacherName}`"
-              :value="teacher.teacherNo"
-            />
+            <el-option v-for="teacher in teacherOptions" :key="teacher.teacherNo"
+              :label="`${teacher.teacherNo} - ${teacher.teacherName}`" :value="teacher.teacherNo" />
           </el-select>
         </el-form-item>
         <el-form-item label="秘书" prop="secretaryNo">
           <el-select v-model="form.secretaryNo" placeholder="请选择秘书" style="width: 100%;">
-            <el-option
-              v-for="teacher in teacherOptions"
-              :key="teacher.teacherNo"
-              :label="`${teacher.teacherNo} - ${teacher.teacherName}`"
-              :value="teacher.teacherNo"
-            />
+            <el-option v-for="teacher in teacherOptions" :key="teacher.teacherNo"
+              :label="`${teacher.teacherNo} - ${teacher.teacherName}`" :value="teacher.teacherNo" />
           </el-select>
         </el-form-item>
         <el-form-item label="普通成员" prop="memberNo">
           <el-select v-model="form.memberNo" placeholder="请选择普通成员" style="width: 100%;">
-            <el-option
-              v-for="teacher in teacherOptions"
-              :key="teacher.teacherNo"
-              :label="`${teacher.teacherNo} - ${teacher.teacherName}`"
-              :value="teacher.teacherNo"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="form.groupStatus" placeholder="请选择状态" style="width: 100%;">
-            <el-option
-              v-for="item in statusOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
+            <el-option v-for="teacher in teacherOptions" :key="teacher.teacherNo"
+              :label="`${teacher.teacherNo} - ${teacher.teacherName}`" :value="teacher.teacherNo" />
           </el-select>
         </el-form-item>
       </el-form>

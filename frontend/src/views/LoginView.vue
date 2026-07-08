@@ -51,7 +51,7 @@ async function handleLogin() {
       router.push('/dashboard')
     }
   } catch (error) {
-    ElMessage.error(error.message || '登录失败')
+    // 错误提示已由请求拦截器统一处理
   } finally {
     loading.value = false
   }
@@ -68,13 +68,7 @@ async function handleLogin() {
         </div>
       </template>
 
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        label-position="top"
-        @keyup.enter="handleLogin"
-      >
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @keyup.enter="handleLogin">
         <el-form-item label="用户类型">
           <el-radio-group v-model="form.userType" size="large">
             <el-radio-button label="admin">管理员</el-radio-button>
@@ -84,33 +78,17 @@ async function handleLogin() {
         </el-form-item>
 
         <el-form-item label="账号" prop="username">
-          <el-input
-            v-model="form.username"
-            :placeholder="form.userType === 'admin' ? '管理员账号' : form.userType === 'teacher' ? '工号' : '学号'"
-            size="large"
-            clearable
-          />
+          <el-input v-model="form.username"
+            :placeholder="form.userType === 'admin' ? '管理员账号' : form.userType === 'teacher' ? '工号' : '学号'" size="large"
+            clearable />
         </el-form-item>
 
         <el-form-item label="密码" prop="password">
-          <el-input
-            v-model="form.password"
-            type="password"
-            placeholder="请输入密码"
-            size="large"
-            show-password
-            clearable
-          />
+          <el-input v-model="form.password" type="password" placeholder="请输入密码" size="large" show-password clearable />
         </el-form-item>
 
         <el-form-item>
-          <el-button
-            type="primary"
-            size="large"
-            :loading="loading"
-            style="width: 100%;"
-            @click="handleLogin"
-          >
+          <el-button type="primary" size="large" :loading="loading" style="width: 100%;" @click="handleLogin">
             登录
           </el-button>
         </el-form-item>

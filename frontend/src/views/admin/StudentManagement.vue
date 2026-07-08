@@ -28,8 +28,7 @@ const form = reactive({
   grade: '',
   studentGroupId: '',
   password: '',
-  accountStatus: 1,
-  overallStatus: 1
+  accountStatus: 1
 })
 
 const rules = {
@@ -47,13 +46,6 @@ function getStudentGroupName(groupId) {
 }
 
 const genderOptions = ['男', '女']
-const overallStatusOptions = [
-  { label: '待分配', value: 1 },
-  { label: '进行中', value: 2 },
-  { label: '待答辩', value: 3 },
-  { label: '已完成', value: 4 },
-  { label: '已弃做', value: 5 }
-]
 
 async function fetchData() {
   loading.value = true
@@ -97,8 +89,7 @@ function handleAdd() {
     grade: '',
     studentGroupId: null,
     password: '',
-    accountStatus: 1,
-    overallStatus: 1
+    accountStatus: 1
   })
   dialogVisible.value = true
 }
@@ -115,8 +106,7 @@ function handleEdit(row) {
     grade: row.grade || '',
     studentGroupId: row.studentGroupId || null,
     password: '',
-    accountStatus: row.accountStatus,
-    overallStatus: row.overallStatus || 1
+    accountStatus: row.accountStatus
   })
   dialogVisible.value = true
 }
@@ -147,8 +137,7 @@ async function handleSubmit() {
       major: form.major,
       grade: form.grade,
       studentGroupId: form.studentGroupId || null,
-      accountStatus: form.accountStatus,
-      overallStatus: form.overallStatus
+      accountStatus: form.accountStatus
     }
     if (form.password) {
       data.password = form.password
@@ -189,11 +178,6 @@ function handleSizeChange(val) {
 function handleCurrentChange(val) {
   pagination.pageNum = val
   fetchData()
-}
-
-function getOverallStatusLabel(value) {
-  const item = overallStatusOptions.find(i => i.value === value)
-  return item ? item.label : '未知'
 }
 
 onMounted(() => {
@@ -239,7 +223,6 @@ onMounted(() => {
             {{ getStudentGroupName(row.studentGroupId) }}
           </template>
         </el-table-column>
-        <el-table-column prop="overallStatusDesc" label="整体进度" width="100" />
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
@@ -283,11 +266,6 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input v-model="form.password" type="password" :placeholder="isEdit ? '不修改请留空' : '请输入密码'" />
-        </el-form-item>
-        <el-form-item label="整体进度">
-          <el-select v-model="form.overallStatus" placeholder="请选择整体进度" style="width: 100%;">
-            <el-option v-for="item in overallStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
-          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>

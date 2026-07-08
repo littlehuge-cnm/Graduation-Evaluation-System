@@ -1,6 +1,7 @@
 package com.example.graduationevaluationsystem.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.graduationevaluationsystem.dto.TeacherStudentBatchAssignDTO;
 import com.example.graduationevaluationsystem.entity.TeacherStudent;
 import com.example.graduationevaluationsystem.vo.TeacherStudentVO;
 
@@ -14,8 +15,8 @@ public interface TeacherStudentService extends IService<TeacherStudent> {
     /**
      * 按条件查询师生关系列表（含教师姓名、学生姓名）
      *
-     * @param teacherNo   教师工号（可为空）
-     * @param studentNo   学号（可为空）
+     * @param teacherNo    教师工号（可为空）
+     * @param studentNo    学号（可为空）
      * @param relationType 关系类型（可为空）
      * @return 师生关系列表
      */
@@ -28,4 +29,11 @@ public interface TeacherStudentService extends IService<TeacherStudent> {
      * @param relationStatus 关系状态：1=生效/2=已解除
      */
     void updateRelationStatus(Integer id, Integer relationStatus);
+
+    /**
+     * 批量分配指导/评阅教师
+     *
+     * @param list 分配信息列表
+     */
+    void batchAssign(List<TeacherStudentBatchAssignDTO> list);
 }

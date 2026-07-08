@@ -239,7 +239,7 @@ onMounted(() => {
 
       <el-table v-loading="loading" :data="tableData" border>
         <el-table-column prop="groupId" label="组号" width="80" />
-        <el-table-column prop="groupName" label="组名" min-width="160" />
+        <el-table-column prop="groupName" label="组名" min-width="80" />
         <el-table-column prop="studentCount" label="学生数" width="100" />
         <el-table-column label="组内学生" min-width="320">
           <template #default="{ row }">

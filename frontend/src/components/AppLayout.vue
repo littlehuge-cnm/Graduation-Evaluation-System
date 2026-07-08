@@ -18,7 +18,10 @@ import {
   Medal,
   EditPen,
   Document,
-  Timer
+  Timer,
+  Management,
+  FirstAidKit,
+  List
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -29,17 +32,34 @@ const activeMenu = computed(() => route.path)
 
 const adminMenus = [
   { index: '/admin/dashboard', title: '控制台', icon: Histogram },
-  { index: '/admin/management', title: '管理员管理', icon: UserFilled },
-  { index: '/admin/teachers', title: '教师管理', icon: School },
-  { index: '/admin/students', title: '学生管理', icon: User },
-  { index: '/admin/teacher-groups', title: '教师分组', icon: OfficeBuilding },
-  { index: '/admin/student-groups', title: '学生分组', icon: Collection },
-  { index: '/admin/group-mappings', title: '环节对应关系', icon: Connection },
-  { index: '/admin/teacher-students', title: '师生关系', icon: Connection },
-  { index: '/admin/stage-status', title: '环节状态', icon: Timer },
-  { index: '/admin/operation-logs', title: '操作日志', icon: Notebook },
-  { index: '/admin/manual-export', title: '评价手册导出', icon: Document },
-  { index: '/admin/committee-evaluation', title: '委员会评定', icon: Medal }
+  {
+    title: '人员管理',
+    icon: UserFilled,
+    children: [
+      { index: '/admin/students', title: '学生管理', icon: User },
+      { index: '/admin/teachers', title: '教师管理', icon: School },
+      { index: '/admin/management', title: '管理员管理', icon: Management }
+    ]
+  },
+  {
+    title: '分组管理',
+    icon: OfficeBuilding,
+    children: [
+      { index: '/admin/teacher-students', title: '教师分配', icon: Connection },
+      { index: '/admin/group-mappings', title: '环节分配', icon: FirstAidKit },
+      { index: '/admin/student-groups', title: '学生分组', icon: Collection },
+      { index: '/admin/teacher-groups', title: '教师分组', icon: OfficeBuilding }
+    ]
+  },
+  {
+    title: '任务管理',
+    icon: Notebook,
+    children: [
+      { index: '/admin/manual-review', title: '评价手册查看', icon: Document },
+      { index: '/admin/committee-evaluation', title: '答辩委员会评定', icon: Medal }
+    ]
+  },
+  { index: '/admin/operation-logs', title: '操作日志', icon: List }
 ]
 
 const teacherMenus = [
@@ -89,12 +109,28 @@ function handleSelect(index) {
       </div>
       <el-menu :default-active="activeMenu" class="layout-menu" background-color="#304156" text-color="#bfcbd9"
         active-text-color="#409EFF" @select="handleSelect">
-        <el-menu-item v-for="menu in menus" :key="menu.index" :index="menu.index">
-          <el-icon>
-            <component :is="menu.icon" />
-          </el-icon>
-          <span>{{ menu.title }}</span>
-        </el-menu-item>
+        <template v-for="menu in menus" :key="menu.index || menu.title">
+          <el-sub-menu v-if="menu.children" :index="menu.title">
+            <template #title>
+              <el-icon>
+                <component :is="menu.icon" />
+              </el-icon>
+              <span>{{ menu.title }}</span>
+            </template>
+            <el-menu-item v-for="child in menu.children" :key="child.index" :index="child.index">
+              <el-icon>
+                <component :is="child.icon" />
+              </el-icon>
+              <span>{{ child.title }}</span>
+            </el-menu-item>
+          </el-sub-menu>
+          <el-menu-item v-else :index="menu.index">
+            <el-icon>
+              <component :is="menu.icon" />
+            </el-icon>
+            <span>{{ menu.title }}</span>
+          </el-menu-item>
+        </template>
       </el-menu>
     </el-aside>
 
