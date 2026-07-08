@@ -58,12 +58,13 @@ CREATE TABLE t_student (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '学生表';
 
 -- ---------------------------------------------------------------------
--- 4. 学生分组表
+-- 4. 学生分组表（组内学号直接存储在表中，t_student.student_group_id 仅作关联）
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS t_student_group;
 CREATE TABLE t_student_group (
     group_id    INT          NOT NULL AUTO_INCREMENT COMMENT '学生组号',
     group_name  VARCHAR(50)  DEFAULT NULL COMMENT '组名',
+    student_no  VARCHAR(500) DEFAULT NULL COMMENT '组内学号列表（逗号分隔）',
     PRIMARY KEY (group_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '学生分组表';
 
@@ -82,7 +83,7 @@ CREATE TABLE t_teacher_group (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '教师分组表';
 
 -- ---------------------------------------------------------------------
--- 6. 环节对应关系表（按环节设定教师组与学生组的对应关系）
+-- 5. 环节对应关系表（按环节设定教师组与学生组的对应关系）
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS t_group_mapping;
 CREATE TABLE t_group_mapping (
@@ -96,7 +97,7 @@ CREATE TABLE t_group_mapping (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '环节对应关系表';
 
 -- ---------------------------------------------------------------------
--- 7. 师生关系表（合并指导关系与评阅关系）
+-- 6. 师生关系表（合并指导关系与评阅关系）
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS t_teacher_student;
 CREATE TABLE t_teacher_student (
@@ -110,7 +111,7 @@ CREATE TABLE t_teacher_student (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '师生关系表';
 
 -- ---------------------------------------------------------------------
--- 8. 文档表（合并任务书与指导书）
+-- 7. 文档表（合并任务书与指导书）
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS t_document;
 CREATE TABLE t_document (
@@ -131,7 +132,7 @@ CREATE TABLE t_document (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '文档表';
 
 -- ---------------------------------------------------------------------
--- 9. 评价记录表（合并各环节的成绩、评语、记录）
+-- 8. 评价记录表（合并各环节的成绩、评语、记录）
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS t_score_record;
 CREATE TABLE t_score_record (
@@ -151,7 +152,7 @@ CREATE TABLE t_score_record (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '评价记录表';
 
 -- ---------------------------------------------------------------------
--- 10. 环节状态表（跟踪每名学生在三个环节的进度）
+-- 9. 环节状态表（跟踪每名学生在三个环节的进度）
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS t_stage_status;
 CREATE TABLE t_stage_status (
@@ -166,7 +167,7 @@ CREATE TABLE t_stage_status (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '环节状态表';
 
 -- ---------------------------------------------------------------------
--- 11. 操作日志表
+-- 10. 操作日志表
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS t_operation_log;
 CREATE TABLE t_operation_log (

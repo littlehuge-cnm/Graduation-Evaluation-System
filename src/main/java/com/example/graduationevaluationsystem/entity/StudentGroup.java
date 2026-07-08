@@ -16,4 +16,9 @@ public class StudentGroup {
     private Integer groupId;
 
     private String groupName;
+
+    /**
+     * 组内学号列表（逗号分隔），主数据源
+     */
+    private String studentNo;
 }

@@ -12,6 +12,12 @@ public class StudentGroupVO {
 
     private Integer groupId;
     private String groupName;
+
+    /**
+     * 组内学号列表（逗号分隔）
+     */
+    private String studentNo;
+
     private Integer studentCount;
 
     /**
