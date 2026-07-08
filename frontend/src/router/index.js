@@ -16,6 +16,8 @@ import StudentGroupManagement from '@/views/admin/StudentGroupManagement.vue'
 import GroupMappingManagement from '@/views/admin/GroupMappingManagement.vue'
 import TeacherStudentManagement from '@/views/admin/TeacherStudentManagement.vue'
 import OperationLog from '@/views/admin/OperationLog.vue'
+import StageStatusManagement from '@/views/admin/StageStatusManagement.vue'
+import ManualExportManagement from '@/views/admin/ManualExportManagement.vue'
 import CommitteeEvaluation from '@/views/admin/CommitteeEvaluation.vue'
 
 const routes = [
@@ -93,6 +95,18 @@ const routes = [
         path: 'admin/operation-logs',
         name: 'OperationLog',
         component: OperationLog,
+        meta: { roles: ['admin'] }
+      },
+      {
+        path: 'admin/stage-status',
+        name: 'StageStatusManagement',
+        component: StageStatusManagement,
+        meta: { roles: ['admin'] }
+      },
+      {
+        path: 'admin/manual-export',
+        name: 'ManualExportManagement',
+        component: ManualExportManagement,
         meta: { roles: ['admin'] }
       },
       {

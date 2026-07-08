@@ -2,6 +2,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAdminList, addAdmin, updateAdmin, deleteAdmin } from '@/api/admin.js'
+import { updateAccountStatus } from '@/api/account.js'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -84,6 +85,20 @@ async function handleDelete(row) {
   }
 }
 
+async function handleStatusChange(row) {
+  try {
+    await updateAccountStatus({
+      userType: 'admin',
+      username: row.adminId,
+      accountStatus: row.accountStatus
+    })
+    ElMessage.success('状态更新成功')
+  } catch (error) {
+    row.accountStatus = row.accountStatus === 1 ? 2 : 1
+    ElMessage.error(error.message || '状态更新失败')
+  }
+}
+
 async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
@@ -149,9 +164,10 @@ onMounted(fetchData)
       <el-table v-loading="loading" :data="tableData" border>
         <el-table-column prop="adminId" label="管理员账号" min-width="140" />
         <el-table-column prop="adminName" label="姓名" min-width="120" />
-        <el-table-column prop="accountStatusDesc" label="状态" min-width="100">
+        <el-table-column prop="accountStatusDesc" label="状态" min-width="120">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.accountStatus)">{{ getStatusText(row.accountStatus) }}</el-tag>
+            <el-switch v-model="row.accountStatus" :active-value="1" :inactive-value="2" active-text="启用"
+              inactive-text="禁用" inline-prompt @change="handleStatusChange(row)" />
           </template>
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
@@ -162,16 +178,9 @@ onMounted(fetchData)
         </el-table-column>
       </el-table>
 
-      <el-pagination
-        v-model:current-page="pagination.pageNum"
-        v-model:page-size="pagination.pageSize"
-        :total="pagination.total"
-        :page-sizes="[10, 20, 50]"
-        layout="total, sizes, prev, pager, next, jumper"
-        class="pagination"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-      />
+      <el-pagination v-model:current-page="pagination.pageNum" v-model:page-size="pagination.pageSize"
+        :total="pagination.total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next, jumper"
+        class="pagination" @size-change="handleSizeChange" @current-change="handleCurrentChange" />
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">

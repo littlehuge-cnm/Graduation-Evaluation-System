@@ -2,6 +2,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTeacherList, addTeacher, updateTeacher, deleteTeacher, importTeachers } from '@/api/teacher.js'
+import { updateAccountStatus } from '@/api/account.js'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -100,6 +101,20 @@ async function handleDelete(row) {
   }
 }
 
+async function handleStatusChange(row) {
+  try {
+    await updateAccountStatus({
+      userType: 'teacher',
+      username: row.teacherNo,
+      accountStatus: row.accountStatus
+    })
+    ElMessage.success('状态更新成功')
+  } catch (error) {
+    row.accountStatus = row.accountStatus === 1 ? 2 : 1
+    ElMessage.error(error.message || '状态更新失败')
+  }
+}
+
 async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
@@ -169,17 +184,13 @@ onMounted(fetchData)
       <template #header>
         <div class="card-header">
           <div class="search-bar">
-            <el-input v-model="keyword" placeholder="按工号/姓名搜索" clearable style="width: 220px;" @keyup.enter="handleSearch" />
+            <el-input v-model="keyword" placeholder="按工号/姓名搜索" clearable style="width: 220px;"
+              @keyup.enter="handleSearch" />
             <el-button type="primary" @click="handleSearch">搜索</el-button>
           </div>
           <div>
-            <el-upload
-              action=""
-              :before-upload="handleImport"
-              :show-file-list="false"
-              accept=".xlsx,.xls,.csv"
-              style="display: inline-block; margin-right: 12px;"
-            >
+            <el-upload action="" :before-upload="handleImport" :show-file-list="false" accept=".xlsx,.xls,.csv"
+              style="display: inline-block; margin-right: 12px;">
               <el-button>批量导入</el-button>
             </el-upload>
             <el-button type="primary" @click="handleAdd">新增教师</el-button>
@@ -194,9 +205,10 @@ onMounted(fetchData)
         <el-table-column prop="department" label="院系" min-width="140" />
         <el-table-column prop="title" label="职称" min-width="120" />
         <el-table-column prop="phone" label="联系方式" min-width="140" />
-        <el-table-column prop="accountStatusDesc" label="状态" width="100">
+        <el-table-column prop="accountStatusDesc" label="状态" width="120">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.accountStatus)">{{ row.accountStatusDesc || '未知' }}</el-tag>
+            <el-switch v-model="row.accountStatus" :active-value="1" :inactive-value="2" active-text="启用"
+              inactive-text="禁用" inline-prompt @change="handleStatusChange(row)" />
           </template>
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
@@ -207,16 +219,9 @@ onMounted(fetchData)
         </el-table-column>
       </el-table>
 
-      <el-pagination
-        v-model:current-page="pagination.pageNum"
-        v-model:page-size="pagination.pageSize"
-        :total="pagination.total"
-        :page-sizes="[10, 20, 50]"
-        layout="total, sizes, prev, pager, next, jumper"
-        class="pagination"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-      />
+      <el-pagination v-model:current-page="pagination.pageNum" v-model:page-size="pagination.pageSize"
+        :total="pagination.total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next, jumper"
+        class="pagination" @size-change="handleSizeChange" @current-change="handleCurrentChange" />
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">

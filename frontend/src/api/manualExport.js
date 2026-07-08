@@ -6,3 +6,15 @@ export function exportManual(studentNo) {
     responseType: 'blob'
   })
 }
+
+export function exportManualBatch(studentNos) {
+  return request.post('/manual-export/batch', { studentNos }, {
+    responseType: 'blob'
+  })
+}
+
+export function exportManualByGroup(studentGroupId) {
+  return request.post('/manual-export/by-group', { studentGroupId }, {
+    responseType: 'blob'
+  })
+}
