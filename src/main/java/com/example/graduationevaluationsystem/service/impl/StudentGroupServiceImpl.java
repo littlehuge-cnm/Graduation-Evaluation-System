@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -28,8 +30,11 @@ public class StudentGroupServiceImpl extends ServiceImpl<StudentGroupMapper, Stu
     public Integer createGroup(String groupName, List<String> studentNos) {
         StudentGroup group = new StudentGroup();
         group.setGroupName(groupName);
+        // 将学号列表转为逗号分隔字符串存入学生组表
+        group.setStudentNo(joinStudentNos(studentNos));
         save(group);
 
+        // 同步更新学生表的 student_group_id（仅作关联）
         if (studentNos != null && !studentNos.isEmpty()) {
             bindStudents(group.getGroupId(), studentNos);
         }
@@ -47,18 +52,24 @@ public class StudentGroupServiceImpl extends ServiceImpl<StudentGroupMapper, Stu
         // 更新组名
         if (groupName != null) {
             group.setGroupName(groupName);
-            updateById(group);
         }
 
-        // 更新学生绑定
+        // 更新组内学号（在学生组表上直接操作）
         if (studentNos != null) {
-            // 先解除该组原有学生的绑定
-            unbindAllStudents(groupId);
-            // 再绑定新的学生
+            // 先解除原有学生的关联
+            List<String> oldStudentNos = parseStudentNos(group.getStudentNo());
+            if (!oldStudentNos.isEmpty()) {
+                unbindStudents(oldStudentNos);
+            }
+            // 更新学生组表的 student_no 字段
+            group.setStudentNo(joinStudentNos(studentNos));
+            // 绑定新学生的 student_group_id
             if (!studentNos.isEmpty()) {
                 bindStudents(groupId, studentNos);
             }
         }
+
+        updateById(group);
     }
 
     @Override
@@ -69,8 +80,12 @@ public class StudentGroupServiceImpl extends ServiceImpl<StudentGroupMapper, Stu
             throw new RuntimeException("学生分组不存在");
         }
 
-        // 先解除组内学生的绑定
-        unbindAllStudents(groupId);
+        // 先解除组内学生的关联（根据 student_no 字段）
+        List<String> studentNos = parseStudentNos(group.getStudentNo());
+        if (!studentNos.isEmpty()) {
+            unbindStudents(studentNos);
+        }
+
         // 再删除分组
         removeById(groupId);
     }
@@ -86,13 +101,44 @@ public class StudentGroupServiceImpl extends ServiceImpl<StudentGroupMapper, Stu
         if (vo == null) {
             return null;
         }
-        List<StudentGroupVO.StudentBriefVO> students = baseMapper.selectStudentsByGroupId(groupId);
-        vo.setStudents(students);
+        // 根据 student_no 字段解析学号，查询学生详细信息
+        List<String> studentNos = parseStudentNos(vo.getStudentNo());
+        if (studentNos.isEmpty()) {
+            vo.setStudents(new ArrayList<>());
+        } else {
+            List<StudentGroupVO.StudentBriefVO> students = baseMapper.selectStudentsByNos(studentNos);
+            vo.setStudents(students != null ? students : new ArrayList<>());
+        }
         return vo;
     }
 
+    // ==================== 内部方法 ====================
+
     /**
-     * 将指定学号列表的学生绑定到分组
+     * 将学号列表转为逗号分隔字符串
+     */
+    private String joinStudentNos(List<String> studentNos) {
+        if (studentNos == null || studentNos.isEmpty()) {
+            return null;
+        }
+        return String.join(",", studentNos);
+    }
+
+    /**
+     * 将逗号分隔的学号字符串解析为列表
+     */
+    private List<String> parseStudentNos(String studentNo) {
+        if (studentNo == null || studentNo.isBlank()) {
+            return new ArrayList<>();
+        }
+        return Arrays.stream(studentNo.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+    }
+
+    /**
+     * 将指定学号列表的学生绑定到分组（更新 student_group_id）
      */
     private void bindStudents(Integer groupId, List<String> studentNos) {
         LambdaUpdateWrapper<Student> wrapper = new LambdaUpdateWrapper<>();
@@ -102,11 +148,11 @@ public class StudentGroupServiceImpl extends ServiceImpl<StudentGroupMapper, Stu
     }
 
     /**
-     * 解除分组下所有学生的绑定
+     * 解除指定学号列表学生的分组绑定（置空 student_group_id）
      */
-    private void unbindAllStudents(Integer groupId) {
+    private void unbindStudents(List<String> studentNos) {
         LambdaUpdateWrapper<Student> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(Student::getStudentGroupId, groupId)
+        wrapper.in(Student::getStudentNo, studentNos)
                .set(Student::getStudentGroupId, null);
         studentMapper.update(null, wrapper);
     }
