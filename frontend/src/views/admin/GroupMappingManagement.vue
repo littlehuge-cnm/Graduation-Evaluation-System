@@ -1,184 +1,264 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getGroupMappingList, addGroupMapping, updateGroupMapping, deleteGroupMapping } from '@/api/groupMapping.js'
+import { batchAssignGroupMapping, getGroupMappingList } from '@/api/groupMapping.js'
 import { getTeacherGroupList } from '@/api/teacherGroup.js'
 import { getStudentGroupList } from '@/api/studentGroup.js'
 
 const loading = ref(false)
-const tableData = ref([])
-const teacherGroupOptions = ref([])
-const studentGroupOptions = ref([])
-const stage = ref('')
+const studentGroups = ref([])
+const teacherGroups = ref([])
+const mappings = ref([])
+const keyword = ref('')
+const selectedGroups = ref([])
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
-const isEdit = ref(false)
+const dialogMode = ref('single')
+const currentGroup = ref(null)
 const formRef = ref(null)
 const form = reactive({
-  id: null,
-  stage: '开题',
-  teacherGroupId: '',
-  studentGroupId: ''
+  openingTeacherGroupId: '',
+  midtermTeacherGroupId: '',
+  defenseTeacherGroupId: ''
 })
 
 const rules = {
-  stage: [{ required: true, message: '请选择环节', trigger: 'change' }],
-  teacherGroupId: [{ required: true, message: '请选择教师组', trigger: 'change' }],
-  studentGroupId: [{ required: true, message: '请选择学生组', trigger: 'change' }]
+  openingTeacherGroupId: [{ required: false }],
+  midtermTeacherGroupId: [{ required: false }],
+  defenseTeacherGroupId: [{ required: false }]
 }
 
-const stageOptions = ['开题', '中期', '答辩']
+function getStageMapping(studentGroupId, stage) {
+  return mappings.value.find(m => m.studentGroupId === studentGroupId && m.stage === stage)
+}
+
+const tableData = computed(() => {
+  const list = studentGroups.value.map(g => {
+    const opening = getStageMapping(g.groupId, '开题')
+    const midterm = getStageMapping(g.groupId, '中期')
+    const defense = getStageMapping(g.groupId, '答辩')
+    return {
+      ...g,
+      openingTeacherGroupId: opening?.teacherGroupId || '',
+      openingTeacherGroupName: opening?.teacherGroupName || '未分配',
+      midtermTeacherGroupId: midterm?.teacherGroupId || '',
+      midtermTeacherGroupName: midterm?.teacherGroupName || '未分配',
+      defenseTeacherGroupId: defense?.teacherGroupId || '',
+      defenseTeacherGroupName: defense?.teacherGroupName || '未分配'
+    }
+  })
+  const k = keyword.value.trim()
+  if (!k) return list
+  return list.filter(g => g.groupName?.includes(k))
+})
 
 async function fetchData() {
   loading.value = true
   try {
-    const res = await getGroupMappingList({ stage: stage.value || undefined })
-    tableData.value = res || []
+    const [sgRes, tgRes] = await Promise.all([
+      getStudentGroupList(),
+      getTeacherGroupList()
+    ])
+    studentGroups.value = sgRes || []
+    teacherGroups.value = tgRes || []
+    await fetchMappings()
+  } catch (error) {
+    ElMessage.error(error.message || '获取数据失败')
   } finally {
     loading.value = false
   }
 }
 
-async function fetchGroups() {
-  try {
-    const [tRes, sRes] = await Promise.all([getTeacherGroupList(), getStudentGroupList()])
-    teacherGroupOptions.value = tRes || []
-    studentGroupOptions.value = sRes || []
-  } catch (error) {
-    console.error(error)
-  }
+async function fetchMappings() {
+  mappings.value = await getGroupMappingList({})
 }
 
 function handleSearch() {
-  fetchData()
-}
-
-function handleAdd() {
-  isEdit.value = false
-  dialogTitle.value = '新增环节对应关系'
-  Object.assign(form, {
-    id: null,
-    stage: '开题',
-    teacherGroupId: '',
-    studentGroupId: ''
-  })
-  dialogVisible.value = true
+  keyword.value = keyword.value.trim()
 }
 
 function handleEdit(row) {
-  isEdit.value = true
-  dialogTitle.value = '编辑环节对应关系'
-  Object.assign(form, {
-    id: row.id,
-    stage: row.stage,
-    teacherGroupId: row.teacherGroupId,
-    studentGroupId: row.studentGroupId
-  })
+  currentGroup.value = row
+  dialogMode.value = 'single'
+  dialogTitle.value = `分配教师组 - ${row.groupName}`
+  form.openingTeacherGroupId = row.openingTeacherGroupId || ''
+  form.midtermTeacherGroupId = row.midtermTeacherGroupId || ''
+  form.defenseTeacherGroupId = row.defenseTeacherGroupId || ''
   dialogVisible.value = true
 }
 
-async function handleDelete(row) {
-  try {
-    await ElMessageBox.confirm('确定删除该对应关系吗？', '提示', { type: 'warning' })
-    await deleteGroupMapping(row.id)
-    ElMessage.success('删除成功')
-    fetchData()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error(error.message || '删除失败')
+function handleBatchAssign() {
+  if (selectedGroups.value.length === 0) {
+    ElMessage.warning('请至少选择一个学生组')
+    return
+  }
+  currentGroup.value = null
+  dialogMode.value = 'batch'
+  dialogTitle.value = `批量分配教师组（已选 ${selectedGroups.value.length} 个学生组）`
+  form.openingTeacherGroupId = ''
+  form.midtermTeacherGroupId = ''
+  form.defenseTeacherGroupId = ''
+  dialogVisible.value = true
+}
+
+function validateAssignList(list) {
+  for (const item of list) {
+    const opening = item.openingTeacherGroupId || null
+    const midterm = item.midtermTeacherGroupId || null
+    const defense = item.defenseTeacherGroupId || null
+    const values = [opening, midterm, defense].filter(v => v !== null)
+    const unique = new Set(values)
+    if (unique.size !== values.length) {
+      ElMessage.error(`学生组【${item.studentGroupName}】在同一学生组的三个环节中不能分配相同的教师组`)
+      return false
     }
   }
+  return true
+}
+
+function buildSingleList() {
+  const row = currentGroup.value
+  return [{
+    studentGroupId: row.groupId,
+    studentGroupName: row.groupName,
+    openingTeacherGroupId: toNumber(form.openingTeacherGroupId) || row.openingTeacherGroupId || null,
+    midtermTeacherGroupId: toNumber(form.midtermTeacherGroupId) || row.midtermTeacherGroupId || null,
+    defenseTeacherGroupId: toNumber(form.defenseTeacherGroupId) || row.defenseTeacherGroupId || null
+  }]
+}
+
+function buildBatchList() {
+  const opening = toNumber(form.openingTeacherGroupId)
+  const midterm = toNumber(form.midtermTeacherGroupId)
+  const defense = toNumber(form.defenseTeacherGroupId)
+  return selectedGroups.value.map(row => ({
+    studentGroupId: row.groupId,
+    studentGroupName: row.groupName,
+    openingTeacherGroupId: opening !== null ? opening : row.openingTeacherGroupId || null,
+    midtermTeacherGroupId: midterm !== null ? midterm : row.midtermTeacherGroupId || null,
+    defenseTeacherGroupId: defense !== null ? defense : row.defenseTeacherGroupId || null
+  }))
+}
+
+function toNumber(value) {
+  if (value === '' || value === null || value === undefined) return null
+  const n = Number(value)
+  return Number.isNaN(n) ? null : n
 }
 
 async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
 
-  try {
-    const data = {
-      stage: form.stage,
-      teacherGroupId: form.teacherGroupId,
-      studentGroupId: form.studentGroupId
-    }
+  const list = dialogMode.value === 'single' ? buildSingleList() : buildBatchList()
+  if (!validateAssignList(list)) return
 
-    if (isEdit.value) {
-      await updateGroupMapping(form.id, data)
-      ElMessage.success('修改成功')
-    } else {
-      await addGroupMapping(data)
-      ElMessage.success('新增成功')
-    }
+  try {
+    await batchAssignGroupMapping(list)
+    ElMessage.success('分配成功')
     dialogVisible.value = false
-    fetchData()
+    selectedGroups.value = []
+    await fetchMappings()
   } catch (error) {
-    ElMessage.error(error.message || '操作失败')
+    ElMessage.error(error.message || '分配失败')
   }
 }
 
-onMounted(() => {
-  fetchData()
-  fetchGroups()
-})
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm('确定清空该学生组的所有环节分配吗？', '提示', { type: 'warning' })
+    const list = [{
+      studentGroupId: row.groupId,
+      studentGroupName: row.groupName,
+      openingTeacherGroupId: null,
+      midtermTeacherGroupId: null,
+      defenseTeacherGroupId: null
+    }]
+    await batchAssignGroupMapping(list)
+    ElMessage.success('清空成功')
+    await fetchMappings()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '清空失败')
+    }
+  }
+}
+
+function handleSelectionChange(rows) {
+  selectedGroups.value = rows
+}
+
+onMounted(fetchData)
 </script>
 
 <template>
   <div>
-    <el-page-header title="环节对应关系管理" />
+    <el-page-header title="环节分配" />
     <el-card class="table-card">
       <template #header>
         <div class="card-header">
           <div class="search-bar">
-            <el-select v-model="stage" placeholder="按环节筛选" clearable style="width: 160px;">
-              <el-option v-for="s in stageOptions" :key="s" :label="s" :value="s" />
-            </el-select>
+            <el-input v-model="keyword" placeholder="搜索学生组" clearable style="width: 220px;" />
             <el-button type="primary" @click="handleSearch">搜索</el-button>
           </div>
-          <el-button type="primary" @click="handleAdd">新增对应关系</el-button>
+          <el-button type="primary" :disabled="selectedGroups.length === 0" @click="handleBatchAssign">
+            批量分配
+          </el-button>
         </div>
       </template>
 
-      <el-table v-loading="loading" :data="tableData" border>
-        <el-table-column prop="id" label="编号" width="80" />
-        <el-table-column prop="stage" label="环节" width="100" />
-        <el-table-column prop="teacherGroupName" label="教师组" min-width="160" />
-        <el-table-column prop="studentGroupName" label="学生组" min-width="160" />
+      <el-table v-loading="loading" :data="tableData" border @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="55" />
+        <el-table-column prop="groupName" label="学生组" min-width="160" />
+        <el-table-column label="开题教师组" min-width="180">
+          <template #default="{ row }">
+            <span>{{ row.openingTeacherGroupName }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="中期教师组" min-width="180">
+          <template #default="{ row }">
+            <span>{{ row.midtermTeacherGroupName }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="答辩教师组" min-width="180">
+          <template #default="{ row }">
+            <span>{{ row.defenseTeacherGroupName }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
+            <el-button type="danger" link @click="handleDelete(row)">清空</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="环节" prop="stage">
-          <el-select v-model="form.stage" placeholder="请选择环节" style="width: 100%;">
-            <el-option v-for="s in stageOptions" :key="s" :label="s" :value="s" />
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="520px">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
+        <el-form-item label="开题教师组">
+          <el-select v-model="form.openingTeacherGroupId" placeholder="请选择开题教师组" clearable filterable
+            style="width: 100%;">
+            <el-option v-for="group in teacherGroups" :key="group.groupId" :label="group.groupName"
+              :value="group.groupId" />
           </el-select>
         </el-form-item>
-        <el-form-item label="教师组" prop="teacherGroupId">
-          <el-select v-model="form.teacherGroupId" placeholder="请选择教师组" style="width: 100%;">
-            <el-option
-              v-for="group in teacherGroupOptions"
-              :key="group.groupId"
-              :label="group.groupName"
-              :value="group.groupId"
-            />
+        <el-form-item label="中期教师组">
+          <el-select v-model="form.midtermTeacherGroupId" placeholder="请选择中期教师组" clearable filterable
+            style="width: 100%;">
+            <el-option v-for="group in teacherGroups" :key="group.groupId" :label="group.groupName"
+              :value="group.groupId" />
           </el-select>
         </el-form-item>
-        <el-form-item label="学生组" prop="studentGroupId">
-          <el-select v-model="form.studentGroupId" placeholder="请选择学生组" style="width: 100%;">
-            <el-option
-              v-for="group in studentGroupOptions"
-              :key="group.groupId"
-              :label="group.groupName"
-              :value="group.groupId"
-            />
+        <el-form-item label="答辩教师组">
+          <el-select v-model="form.defenseTeacherGroupId" placeholder="请选择答辩教师组" clearable filterable
+            style="width: 100%;">
+            <el-option v-for="group in teacherGroups" :key="group.groupId" :label="group.groupName"
+              :value="group.groupId" />
           </el-select>
         </el-form-item>
+        <el-alert v-if="dialogMode === 'batch'" title="批量分配时，留空表示保持该学生组原有教师组不变" type="info" :closable="false" />
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>

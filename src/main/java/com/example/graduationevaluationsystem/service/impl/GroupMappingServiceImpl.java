@@ -2,6 +2,8 @@ package com.example.graduationevaluationsystem.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.graduationevaluationsystem.common.exception.BusinessException;
+import com.example.graduationevaluationsystem.dto.GroupMappingBatchAssignDTO;
 import com.example.graduationevaluationsystem.entity.GroupMapping;
 import com.example.graduationevaluationsystem.entity.StudentGroup;
 import com.example.graduationevaluationsystem.entity.TeacherGroup;
@@ -16,13 +18,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Function;
 
 /**
  * 环节对应关系 Service 实现
  */
 @Service
 @RequiredArgsConstructor
-public class GroupMappingServiceImpl extends ServiceImpl<GroupMappingMapper, GroupMapping> implements GroupMappingService {
+public class GroupMappingServiceImpl extends ServiceImpl<GroupMappingMapper, GroupMapping>
+        implements GroupMappingService {
 
     private final TeacherGroupMapper teacherGroupMapper;
     private final StudentGroupMapper studentGroupMapper;
@@ -101,7 +105,7 @@ public class GroupMappingServiceImpl extends ServiceImpl<GroupMappingMapper, Gro
         baseMapper.deleteAll();
 
         // 6. 批量插入新对应关系
-        String[] stages = {"开题", "中期", "答辩"};
+        String[] stages = { "开题", "中期", "答辩" };
         List<GroupMapping> mappings = new ArrayList<>();
         for (int stageIdx = 0; stageIdx < 3; stageIdx++) {
             for (int studentIdx = 0; studentIdx < studentCount; studentIdx++) {
@@ -219,7 +223,7 @@ public class GroupMappingServiceImpl extends ServiceImpl<GroupMappingMapper, Gro
         // 检查教师组在该环节下是否已对应其他学生组
         LambdaQueryWrapper<GroupMapping> teacherWrapper = new LambdaQueryWrapper<>();
         teacherWrapper.eq(GroupMapping::getStage, stage)
-                      .eq(GroupMapping::getTeacherGroupId, teacherGroupId);
+                .eq(GroupMapping::getTeacherGroupId, teacherGroupId);
         if (excludeId != null) {
             teacherWrapper.ne(GroupMapping::getId, excludeId);
         }
@@ -230,12 +234,115 @@ public class GroupMappingServiceImpl extends ServiceImpl<GroupMappingMapper, Gro
         // 检查学生组在该环节下是否已对应其他教师组
         LambdaQueryWrapper<GroupMapping> studentWrapper = new LambdaQueryWrapper<>();
         studentWrapper.eq(GroupMapping::getStage, stage)
-                      .eq(GroupMapping::getStudentGroupId, studentGroupId);
+                .eq(GroupMapping::getStudentGroupId, studentGroupId);
         if (excludeId != null) {
             studentWrapper.ne(GroupMapping::getId, excludeId);
         }
         if (count(studentWrapper) > 0) {
             throw new RuntimeException("该环节下学生组[" + studentGroupId + "]已存在对应关系");
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void batchAssign(List<GroupMappingBatchAssignDTO> list) {
+        if (list == null || list.isEmpty()) {
+            throw new BusinessException("分配列表不能为空");
+        }
+
+        Map<String, Function<GroupMappingBatchAssignDTO, Integer>> stageGetters = new LinkedHashMap<>();
+        stageGetters.put("开题", GroupMappingBatchAssignDTO::getOpeningTeacherGroupId);
+        stageGetters.put("中期", GroupMappingBatchAssignDTO::getMidtermTeacherGroupId);
+        stageGetters.put("答辩", GroupMappingBatchAssignDTO::getDefenseTeacherGroupId);
+
+        // 1. 校验学生组存在，且同一学生组的三个环节教师组互不相同
+        for (GroupMappingBatchAssignDTO dto : list) {
+            Integer studentGroupId = dto.getStudentGroupId();
+            StudentGroup studentGroup = studentGroupMapper.selectById(studentGroupId);
+            if (studentGroup == null) {
+                throw new BusinessException("学生分组不存在：" + studentGroupId);
+            }
+            Set<Integer> selected = new HashSet<>();
+            for (Map.Entry<String, Function<GroupMappingBatchAssignDTO, Integer>> entry : stageGetters.entrySet()) {
+                Integer teacherGroupId = entry.getValue().apply(dto);
+                if (teacherGroupId == null) {
+                    continue;
+                }
+                if (teacherGroupMapper.selectById(teacherGroupId) == null) {
+                    throw new BusinessException("教师分组不存在：" + teacherGroupId);
+                }
+                if (!selected.add(teacherGroupId)) {
+                    throw new BusinessException("学生组【" + studentGroup.getGroupName() + "】在三个环节不能分配相同的教师组");
+                }
+            }
+        }
+
+        // 2. 校验批量列表内部：同一环节中教师组不能分配给多个学生组
+        for (Map.Entry<String, Function<GroupMappingBatchAssignDTO, Integer>> entry : stageGetters.entrySet()) {
+            String stage = entry.getKey();
+            Map<Integer, Integer> teacherToStudent = new HashMap<>();
+            for (GroupMappingBatchAssignDTO dto : list) {
+                Integer studentGroupId = dto.getStudentGroupId();
+                Integer teacherGroupId = entry.getValue().apply(dto);
+                if (teacherGroupId == null) {
+                    continue;
+                }
+                if (teacherToStudent.containsKey(teacherGroupId)) {
+                    throw new BusinessException("环节【" + stage + "】中教师组不能同时分配给多个学生组");
+                }
+                teacherToStudent.put(teacherGroupId, studentGroupId);
+            }
+        }
+
+        // 3. 校验与数据库已有数据是否冲突
+        List<Integer> studentGroupIds = list.stream()
+                .map(GroupMappingBatchAssignDTO::getStudentGroupId)
+                .toList();
+        for (Map.Entry<String, Function<GroupMappingBatchAssignDTO, Integer>> entry : stageGetters.entrySet()) {
+            String stage = entry.getKey();
+            for (GroupMappingBatchAssignDTO dto : list) {
+                Integer teacherGroupId = entry.getValue().apply(dto);
+                if (teacherGroupId == null) {
+                    continue;
+                }
+                LambdaQueryWrapper<GroupMapping> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(GroupMapping::getStage, stage)
+                        .eq(GroupMapping::getTeacherGroupId, teacherGroupId)
+                        .notIn(GroupMapping::getStudentGroupId, studentGroupIds);
+                if (count(wrapper) > 0) {
+                    TeacherGroup tg = teacherGroupMapper.selectById(teacherGroupId);
+                    throw new BusinessException("环节【" + stage + "】中教师组【"
+                            + (tg != null ? tg.getGroupName() : teacherGroupId) + "】已分配给其他学生组");
+                }
+            }
+        }
+
+        // 4. 保存/更新/删除每个环节对应关系
+        for (Map.Entry<String, Function<GroupMappingBatchAssignDTO, Integer>> entry : stageGetters.entrySet()) {
+            String stage = entry.getKey();
+            for (GroupMappingBatchAssignDTO dto : list) {
+                Integer studentGroupId = dto.getStudentGroupId();
+                Integer teacherGroupId = entry.getValue().apply(dto);
+                LambdaQueryWrapper<GroupMapping> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(GroupMapping::getStage, stage).eq(GroupMapping::getStudentGroupId, studentGroupId);
+                GroupMapping existing = getOne(wrapper);
+                if (teacherGroupId == null) {
+                    if (existing != null) {
+                        removeById(existing.getId());
+                    }
+                } else {
+                    if (existing == null) {
+                        GroupMapping mapping = new GroupMapping();
+                        mapping.setStage(stage);
+                        mapping.setStudentGroupId(studentGroupId);
+                        mapping.setTeacherGroupId(teacherGroupId);
+                        save(mapping);
+                    } else {
+                        existing.setTeacherGroupId(teacherGroupId);
+                        updateById(existing);
+                    }
+                }
+            }
         }
     }
 }

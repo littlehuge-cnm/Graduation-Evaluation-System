@@ -2,6 +2,7 @@ package com.example.graduationevaluationsystem.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.graduationevaluationsystem.entity.GroupMapping;
+import com.example.graduationevaluationsystem.dto.GroupMappingBatchAssignDTO;
 import com.example.graduationevaluationsystem.vo.GroupMappingVO;
 
 import java.util.List;
@@ -14,19 +15,19 @@ public interface GroupMappingService extends IService<GroupMapping> {
     /**
      * 创建环节对应关系（含重复校验）
      *
-     * @param stage           环节
-     * @param teacherGroupId  教师组号
-     * @param studentGroupId  学生组号
+     * @param stage          环节
+     * @param teacherGroupId 教师组号
+     * @param studentGroupId 学生组号
      */
     void createMapping(String stage, Integer teacherGroupId, Integer studentGroupId);
 
     /**
      * 修改环节对应关系（含重复校验）
      *
-     * @param id              记录编号
-     * @param stage           环节
-     * @param teacherGroupId  教师组号
-     * @param studentGroupId  学生组号
+     * @param id             记录编号
+     * @param stage          环节
+     * @param teacherGroupId 教师组号
+     * @param studentGroupId 学生组号
      */
     void updateMapping(Integer id, String stage, Integer teacherGroupId, Integer studentGroupId);
 
@@ -57,4 +58,11 @@ public interface GroupMappingService extends IService<GroupMapping> {
      * @return 分配结果列表（含教师组名、学生组名）
      */
     List<GroupMappingVO> randomAssignAll();
+
+    /**
+     * 批量分配学生组在三个环节上的教师组
+     *
+     * @param list 分配列表
+     */
+    void batchAssign(List<GroupMappingBatchAssignDTO> list);
 }

@@ -1,6 +1,7 @@
 package com.example.graduationevaluationsystem.controller;
 
 import com.example.graduationevaluationsystem.common.Result;
+import com.example.graduationevaluationsystem.dto.GroupMappingBatchAssignDTO;
 import com.example.graduationevaluationsystem.dto.GroupMappingDTO;
 import com.example.graduationevaluationsystem.service.GroupMappingService;
 import com.example.graduationevaluationsystem.vo.GroupMappingVO;
@@ -34,7 +35,7 @@ public class GroupMappingController {
     @PutMapping("/{id}")
     @Operation(summary = "修改环节对应关系", description = "超管修改环节对应关系")
     public Result<Void> update(@Parameter(description = "记录编号") @PathVariable Integer id,
-                               @Valid @RequestBody GroupMappingDTO dto) {
+            @Valid @RequestBody GroupMappingDTO dto) {
         groupMappingService.updateMapping(id, dto.getStage(), dto.getTeacherGroupId(), dto.getStudentGroupId());
         return Result.success();
     }
@@ -54,11 +55,17 @@ public class GroupMappingController {
     }
 
     @PostMapping("/random-assign")
-    @Operation(summary = "随机分配教师组给学生组",
-               description = "一次性为三个环节（开题/中期/答辩）随机分配教师组给学生组，" +
-                             "同一环节一对一，同一学生组三环节教师组互不相同，覆盖原有分配")
+    @Operation(summary = "随机分配教师组给学生组", description = "一次性为三个环节（开题/中期/答辩）随机分配教师组给学生组，" +
+            "同一环节一对一，同一学生组三环节教师组互不相同，覆盖原有分配")
     public Result<List<GroupMappingVO>> randomAssign() {
         return Result.success(groupMappingService.randomAssignAll());
+    }
+
+    @PostMapping("/batch-assign")
+    @Operation(summary = "批量分配环节对应关系", description = "超管为多个学生组同时指定三个环节的教师组")
+    public Result<Void> batchAssign(@Valid @RequestBody List<GroupMappingBatchAssignDTO> list) {
+        groupMappingService.batchAssign(list);
+        return Result.success();
     }
 
     @GetMapping("/{id}")

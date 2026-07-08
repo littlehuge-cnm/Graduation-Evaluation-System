@@ -19,3 +19,7 @@ export function updateGroupMapping(id, data) {
 export function deleteGroupMapping(id) {
   return request.delete(`/group-mappings/${id}`)
 }
+
+export function batchAssignGroupMapping(list) {
+  return request.post('/group-mappings/batch-assign', list)
+}
