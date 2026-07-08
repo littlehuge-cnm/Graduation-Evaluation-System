@@ -1,9 +1,8 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getStudentList, addStudent, updateStudent, deleteStudent, importStudents } from '@/api/student.js'
 import { getStudentGroupList } from '@/api/studentGroup.js'
-import { updateAccountStatus } from '@/api/account.js'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -36,8 +35,15 @@ const form = reactive({
 const rules = {
   studentNo: [{ required: true, message: '请输入学号', trigger: 'blur' }],
   studentName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-  studentGroupId: [{ required: true, message: '请选择学生组', trigger: 'change' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+}
+
+const groupNameMap = computed(() => {
+  return Object.fromEntries(groupOptions.value.map(g => [g.groupId, g.groupName]))
+})
+
+function getStudentGroupName(groupId) {
+  return groupNameMap.value[groupId] || '未分组'
 }
 
 const genderOptions = ['男', '女']
@@ -89,7 +95,7 @@ function handleAdd() {
     className: '',
     major: '',
     grade: '',
-    studentGroupId: '',
+    studentGroupId: null,
     password: '',
     accountStatus: 1,
     overallStatus: 1
@@ -107,7 +113,7 @@ function handleEdit(row) {
     className: row.className || '',
     major: row.major || '',
     grade: row.grade || '',
-    studentGroupId: row.studentGroupId || '',
+    studentGroupId: row.studentGroupId || null,
     password: '',
     accountStatus: row.accountStatus,
     overallStatus: row.overallStatus || 1
@@ -128,20 +134,6 @@ async function handleDelete(row) {
   }
 }
 
-async function handleStatusChange(row) {
-  try {
-    await updateAccountStatus({
-      userType: 'student',
-      username: row.studentNo,
-      accountStatus: row.accountStatus
-    })
-    ElMessage.success('状态更新成功')
-  } catch (error) {
-    row.accountStatus = row.accountStatus === 1 ? 2 : 1
-    ElMessage.error(error.message || '状态更新失败')
-  }
-}
-
 async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
@@ -154,7 +146,7 @@ async function handleSubmit() {
       className: form.className,
       major: form.major,
       grade: form.grade,
-      studentGroupId: form.studentGroupId,
+      studentGroupId: form.studentGroupId || null,
       accountStatus: form.accountStatus,
       overallStatus: form.overallStatus
     }
@@ -197,10 +189,6 @@ function handleSizeChange(val) {
 function handleCurrentChange(val) {
   pagination.pageNum = val
   fetchData()
-}
-
-function getStatusType(status) {
-  return status === 1 ? 'success' : status === 2 ? 'danger' : 'info'
 }
 
 function getOverallStatusLabel(value) {
@@ -246,11 +234,9 @@ onMounted(() => {
         <el-table-column prop="className" label="班级" min-width="120" />
         <el-table-column prop="major" label="专业" min-width="140" />
         <el-table-column prop="grade" label="年级" width="100" />
-        <el-table-column prop="studentGroupName" label="学生组" min-width="120" />
-        <el-table-column prop="accountStatusDesc" label="账号状态" width="120">
+        <el-table-column label="学生组" min-width="120">
           <template #default="{ row }">
-            <el-switch v-model="row.accountStatus" :active-value="1" :inactive-value="2" active-text="启用"
-              inactive-text="禁用" inline-prompt @change="handleStatusChange(row)" />
+            {{ getStudentGroupName(row.studentGroupId) }}
           </template>
         </el-table-column>
         <el-table-column prop="overallStatusDesc" label="整体进度" width="100" />
@@ -289,20 +275,14 @@ onMounted(() => {
         <el-form-item label="年级">
           <el-input v-model="form.grade" placeholder="请输入年级" />
         </el-form-item>
-        <el-form-item label="学生组" prop="studentGroupId">
-          <el-select v-model="form.studentGroupId" placeholder="请选择学生组" style="width: 100%;">
+        <el-form-item label="学生组">
+          <el-select v-model="form.studentGroupId" placeholder="请选择学生组" clearable style="width: 100%;">
             <el-option v-for="group in groupOptions" :key="group.groupId" :label="group.groupName"
               :value="group.groupId" />
           </el-select>
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input v-model="form.password" type="password" :placeholder="isEdit ? '不修改请留空' : '请输入密码'" />
-        </el-form-item>
-        <el-form-item label="账号状态">
-          <el-radio-group v-model="form.accountStatus">
-            <el-radio :label="1">启用</el-radio>
-            <el-radio :label="2">禁用</el-radio>
-          </el-radio-group>
         </el-form-item>
         <el-form-item label="整体进度">
           <el-select v-model="form.overallStatus" placeholder="请选择整体进度" style="width: 100%;">

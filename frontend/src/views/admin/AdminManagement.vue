@@ -2,7 +2,6 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAdminList, addAdmin, updateAdmin, deleteAdmin } from '@/api/admin.js'
-import { updateAccountStatus } from '@/api/account.js'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -28,11 +27,6 @@ const rules = {
   adminName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
-
-const statusOptions = [
-  { label: '启用', value: 1 },
-  { label: '禁用', value: 2 }
-]
 
 async function fetchData() {
   loading.value = true
@@ -85,20 +79,6 @@ async function handleDelete(row) {
   }
 }
 
-async function handleStatusChange(row) {
-  try {
-    await updateAccountStatus({
-      userType: 'admin',
-      username: row.adminId,
-      accountStatus: row.accountStatus
-    })
-    ElMessage.success('状态更新成功')
-  } catch (error) {
-    row.accountStatus = row.accountStatus === 1 ? 2 : 1
-    ElMessage.error(error.message || '状态更新失败')
-  }
-}
-
 async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
@@ -139,14 +119,6 @@ function handleCurrentChange(val) {
   fetchData()
 }
 
-function getStatusText(status) {
-  return status === 1 ? '启用' : status === 2 ? '禁用' : '未知'
-}
-
-function getStatusType(status) {
-  return status === 1 ? 'success' : status === 2 ? 'danger' : 'info'
-}
-
 onMounted(fetchData)
 </script>
 
@@ -164,12 +136,6 @@ onMounted(fetchData)
       <el-table v-loading="loading" :data="tableData" border>
         <el-table-column prop="adminId" label="管理员账号" min-width="140" />
         <el-table-column prop="adminName" label="姓名" min-width="120" />
-        <el-table-column prop="accountStatusDesc" label="状态" min-width="120">
-          <template #default="{ row }">
-            <el-switch v-model="row.accountStatus" :active-value="1" :inactive-value="2" active-text="启用"
-              inactive-text="禁用" inline-prompt @change="handleStatusChange(row)" />
-          </template>
-        </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
@@ -193,12 +159,6 @@ onMounted(fetchData)
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input v-model="form.password" type="password" :placeholder="isEdit ? '不修改请留空' : '请输入密码'" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-radio-group v-model="form.accountStatus">
-            <el-radio :label="1">启用</el-radio>
-            <el-radio :label="2">禁用</el-radio>
-          </el-radio-group>
         </el-form-item>
       </el-form>
       <template #footer>

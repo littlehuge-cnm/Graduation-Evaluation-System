@@ -26,7 +26,26 @@ const form = reactive({
 })
 
 const rules = {
-  groupName: [{ required: true, message: '请输入组名', trigger: 'blur' }]
+  groupName: [
+    { required: true, message: '请输入组名', trigger: 'blur' },
+    { validator: validateGroupName, trigger: 'blur' }
+  ]
+}
+
+function validateGroupName(rule, value, callback) {
+  if (!value) {
+    callback()
+    return
+  }
+  const lowerValue = value.toLowerCase()
+  const duplicate = tableData.value.find(
+    g => g.groupName?.toLowerCase() === lowerValue && g.groupId !== form.groupId
+  )
+  if (duplicate) {
+    callback(new Error('组名已存在，请更换'))
+  } else {
+    callback()
+  }
 }
 
 async function fetchGroups() {
@@ -78,7 +97,15 @@ function isSelected(studentNo) {
   return selectedSet.value.has(studentNo)
 }
 
+function isStudentDisabled(student) {
+  return Boolean(student.studentGroupId) && student.studentGroupId !== form.groupId
+}
+
 function toggleStudent(studentNo) {
+  const student = allStudents.value.find(s => s.studentNo === studentNo)
+  if (student && isStudentDisabled(student)) {
+    return
+  }
   const index = form.studentNos.indexOf(studentNo)
   if (index > -1) {
     form.studentNos.splice(index, 1)
@@ -143,6 +170,32 @@ async function handleDelete(row) {
 async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
+
+  // 检测重复组员：已存在于其他分组的学生
+  const duplicateStudents = form.studentNos
+    .map(no => allStudents.value.find(s => s.studentNo === no))
+    .filter(s => s && s.studentGroupId && s.studentGroupId !== form.groupId)
+
+  if (duplicateStudents.length > 0) {
+    const names = duplicateStudents
+      .map(s => {
+        const groupName = groupMap.value[s.studentGroupId] || '其他分组'
+        return `${s.studentNo} ${s.studentName}（${groupName}）`
+      })
+      .join('、')
+    try {
+      await ElMessageBox.confirm(
+        `以下学生已在其他分组中：${names}。确定要将其移动到当前分组吗？`,
+        '重复组员提示',
+        { confirmButtonText: '确定移动', cancelButtonText: '取消', type: 'warning' }
+      )
+    } catch (error) {
+      if (error !== 'cancel') {
+        console.error(error)
+      }
+      return
+    }
+  }
 
   submitting.value = true
   try {
@@ -222,8 +275,9 @@ onMounted(() => {
               <div class="panel-list">
                 <el-scrollbar max-height="360px">
                   <div v-for="s in filteredAvailableStudents" :key="s.studentNo" class="student-item"
-                    :class="{ selected: isSelected(s.studentNo) }" @click="toggleStudent(s.studentNo)">
-                    <el-checkbox :model-value="isSelected(s.studentNo)" @click.stop />
+                    :class="{ selected: isSelected(s.studentNo), disabled: isStudentDisabled(s) }"
+                    @click="!isStudentDisabled(s) && toggleStudent(s.studentNo)">
+                    <el-checkbox :model-value="isSelected(s.studentNo)" :disabled="isStudentDisabled(s)" @click.stop />
                     <span class="student-name">{{ getStudentDisplayLabel(s) }}</span>
                   </div>
                   <el-empty v-if="filteredAvailableStudents.length === 0" description="无匹配学生" :image-size="60" />
@@ -338,6 +392,16 @@ onMounted(() => {
 
 .student-item.selected {
   background-color: #ecf5ff;
+}
+
+.student-item.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #f5f7fa;
+}
+
+.student-item.disabled .student-name {
+  color: #909399;
 }
 
 .student-name {

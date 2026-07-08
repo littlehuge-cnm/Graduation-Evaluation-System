@@ -2,7 +2,6 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTeacherList, addTeacher, updateTeacher, deleteTeacher, importTeachers } from '@/api/teacher.js'
-import { updateAccountStatus } from '@/api/account.js'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -101,20 +100,6 @@ async function handleDelete(row) {
   }
 }
 
-async function handleStatusChange(row) {
-  try {
-    await updateAccountStatus({
-      userType: 'teacher',
-      username: row.teacherNo,
-      accountStatus: row.accountStatus
-    })
-    ElMessage.success('状态更新成功')
-  } catch (error) {
-    row.accountStatus = row.accountStatus === 1 ? 2 : 1
-    ElMessage.error(error.message || '状态更新失败')
-  }
-}
-
 async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
@@ -170,10 +155,6 @@ function handleCurrentChange(val) {
   fetchData()
 }
 
-function getStatusType(status) {
-  return status === 1 ? 'success' : status === 2 ? 'danger' : 'info'
-}
-
 onMounted(fetchData)
 </script>
 
@@ -205,12 +186,6 @@ onMounted(fetchData)
         <el-table-column prop="department" label="院系" min-width="140" />
         <el-table-column prop="title" label="职称" min-width="120" />
         <el-table-column prop="phone" label="联系方式" min-width="140" />
-        <el-table-column prop="accountStatusDesc" label="状态" width="120">
-          <template #default="{ row }">
-            <el-switch v-model="row.accountStatus" :active-value="1" :inactive-value="2" active-text="启用"
-              inactive-text="禁用" inline-prompt @change="handleStatusChange(row)" />
-          </template>
-        </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
@@ -248,12 +223,6 @@ onMounted(fetchData)
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input v-model="form.password" type="password" :placeholder="isEdit ? '不修改请留空' : '请输入密码'" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-radio-group v-model="form.accountStatus">
-            <el-radio :label="1">启用</el-radio>
-            <el-radio :label="2">禁用</el-radio>
-          </el-radio-group>
         </el-form-item>
       </el-form>
       <template #footer>
