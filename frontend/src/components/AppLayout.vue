@@ -7,7 +7,6 @@ import {
   User,
   Reading,
   Histogram,
-  Tools,
   SwitchButton,
   UserFilled,
   School,
@@ -18,10 +17,9 @@ import {
   Medal,
   EditPen,
   Document,
-  Timer,
   Management,
   FirstAidKit,
-  List
+  Timer
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -58,15 +56,38 @@ const adminMenus = [
       { index: '/admin/manual-review', title: '评价手册查看', icon: Document },
       { index: '/admin/committee-evaluation', title: '答辩委员会评定', icon: Medal }
     ]
-  },
-  { index: '/admin/operation-logs', title: '操作日志', icon: List }
+  }
 ]
 
 const teacherMenus = [
-  { index: '/teacher/dashboard', title: '工作台', icon: Reading },
-  { index: '/teacher/documents', title: '任务书/指导书', icon: Notebook },
-  { index: '/teacher/score-entry', title: '成绩/评语录入', icon: EditPen },
-  { index: '/teacher/manual-export', title: '评价手册导出', icon: Document }
+  { index: '/teacher/dashboard', title: '控制台', icon: Reading },
+  { index: '/teacher/profile', title: '个人信息', icon: User },
+  {
+    title: '指导任务',
+    icon: EditPen,
+    children: [
+      { index: '/teacher/supervise/manual-review', title: '评价手册查看', icon: Document },
+      { index: '/teacher/supervise/documents', title: '任务书/指导书填写', icon: Notebook },
+      { index: '/teacher/supervise/translation', title: '外文翻译评定', icon: Document },
+      { index: '/teacher/supervise/comment', title: '指导教师评定', icon: Medal }
+    ]
+  },
+  {
+    title: '评阅任务',
+    icon: FirstAidKit,
+    children: [
+      { index: '/teacher/review/comment', title: '评阅教师评定', icon: Medal }
+    ]
+  },
+  {
+    title: '答辩任务',
+    icon: OfficeBuilding,
+    children: [
+      { index: '/teacher/group/opening', title: '开题答辩评定', icon: Connection },
+      { index: '/teacher/group/midterm', title: '中期检查评定', icon: Timer },
+      { index: '/teacher/group/defense', title: '最终答辩评定', icon: Medal }
+    ]
+  }
 ]
 
 const studentMenus = [

@@ -4,10 +4,18 @@ import LoginView from '@/views/LoginView.vue'
 import AppLayout from '@/components/AppLayout.vue'
 import AdminDashboard from '@/views/admin/AdminDashboard.vue'
 import TeacherDashboard from '@/views/teacher/TeacherDashboard.vue'
+import TeacherProfile from '@/views/teacher/TeacherProfile.vue'
 import StudentDashboard from '@/views/student/StudentDashboard.vue'
 import TeacherDocuments from '@/views/teacher/TeacherDocuments.vue'
 import TeacherScoreEntry from '@/views/teacher/TeacherScoreEntry.vue'
 import TeacherManualExport from '@/views/teacher/TeacherManualExport.vue'
+import TeacherManualReview from '@/views/teacher/TeacherManualReview.vue'
+import TeacherTranslation from '@/views/teacher/TeacherTranslation.vue'
+import TeacherSuperviseComment from '@/views/teacher/TeacherSuperviseComment.vue'
+import TeacherReviewComment from '@/views/teacher/TeacherReviewComment.vue'
+import TeacherGroupOpening from '@/views/teacher/TeacherGroupOpening.vue'
+import TeacherGroupMidterm from '@/views/teacher/TeacherGroupMidterm.vue'
+import TeacherGroupDefense from '@/views/teacher/TeacherGroupDefense.vue'
 import AdminManagement from '@/views/admin/AdminManagement.vue'
 import TeacherManagement from '@/views/admin/TeacherManagement.vue'
 import StudentManagement from '@/views/admin/StudentManagement.vue'
@@ -15,7 +23,6 @@ import TeacherGroupManagement from '@/views/admin/TeacherGroupManagement.vue'
 import StudentGroupManagement from '@/views/admin/StudentGroupManagement.vue'
 import GroupMappingManagement from '@/views/admin/GroupMappingManagement.vue'
 import TeacherStudentManagement from '@/views/admin/TeacherStudentManagement.vue'
-import OperationLog from '@/views/admin/OperationLog.vue'
 import StageStatusManagement from '@/views/admin/StageStatusManagement.vue'
 import ManualReviewManagement from '@/views/admin/ManualReviewManagement.vue'
 import CommitteeEvaluationManagement from '@/views/admin/CommitteeEvaluationManagement.vue'
@@ -92,12 +99,6 @@ const routes = [
         meta: { roles: ['admin'] }
       },
       {
-        path: 'admin/operation-logs',
-        name: 'OperationLog',
-        component: OperationLog,
-        meta: { roles: ['admin'] }
-      },
-      {
         path: 'admin/stage-status',
         name: 'StageStatusManagement',
         component: StageStatusManagement,
@@ -122,15 +123,57 @@ const routes = [
         meta: { roles: ['teacher'] }
       },
       {
-        path: 'teacher/documents',
+        path: 'teacher/profile',
+        name: 'TeacherProfile',
+        component: TeacherProfile,
+        meta: { roles: ['teacher'] }
+      },
+      {
+        path: 'teacher/supervise/manual-review',
+        name: 'TeacherManualReview',
+        component: TeacherManualReview,
+        meta: { roles: ['teacher'] }
+      },
+      {
+        path: 'teacher/supervise/documents',
         name: 'TeacherDocuments',
         component: TeacherDocuments,
         meta: { roles: ['teacher'] }
       },
       {
-        path: 'teacher/score-entry',
-        name: 'TeacherScoreEntry',
-        component: TeacherScoreEntry,
+        path: 'teacher/supervise/translation',
+        name: 'TeacherTranslation',
+        component: TeacherTranslation,
+        meta: { roles: ['teacher'] }
+      },
+      {
+        path: 'teacher/supervise/comment',
+        name: 'TeacherSuperviseComment',
+        component: TeacherSuperviseComment,
+        meta: { roles: ['teacher'] }
+      },
+      {
+        path: 'teacher/review/comment',
+        name: 'TeacherReviewComment',
+        component: TeacherReviewComment,
+        meta: { roles: ['teacher'] }
+      },
+      {
+        path: 'teacher/group/opening',
+        name: 'TeacherGroupOpening',
+        component: TeacherGroupOpening,
+        meta: { roles: ['teacher'] }
+      },
+      {
+        path: 'teacher/group/midterm',
+        name: 'TeacherGroupMidterm',
+        component: TeacherGroupMidterm,
+        meta: { roles: ['teacher'] }
+      },
+      {
+        path: 'teacher/group/defense',
+        name: 'TeacherGroupDefense',
+        component: TeacherGroupDefense,
         meta: { roles: ['teacher'] }
       },
       {

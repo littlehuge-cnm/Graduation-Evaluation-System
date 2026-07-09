@@ -1,10 +1,16 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getStudentList, getStudentTeachers, getStudentDocuments } from '@/api/student.js'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRoute } from 'vue-router'
+import { useUserStore } from '@/stores/user.js'
+import { getTeacherStudents } from '@/api/teacher.js'
+import { getStudentTeachers, getStudentDocuments } from '@/api/student.js'
 import { getScoreRecordList } from '@/api/scoreRecord.js'
 import { getStudentGroupList } from '@/api/studentGroup.js'
+import { exportManual, exportManualBatch } from '@/api/manualExport.js'
 
+const route = useRoute()
+const userStore = useUserStore()
 const loading = ref(false)
 const students = ref([])
 const studentGroups = ref([])
@@ -31,6 +37,8 @@ const records = ref([])
 const teachers = ref(null)
 const documents = ref([])
 const activeSection = ref('')
+const batchDialogVisible = ref(false)
+const selectedStudentNos = ref([])
 
 const navItems = [
   { id: 'section-progress', label: '任务进度' },
@@ -146,6 +154,81 @@ function getStatusType(itemType) {
   return isCompleted(itemType) ? 'success' : 'info'
 }
 
+function downloadBlob(blob, filename) {
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+}
+
+async function handlePreview() {
+  if (!selectedStudent.value) {
+    ElMessage.warning('请先选择学生')
+    return
+  }
+  ElMessage.info('预览功能预留，待实现')
+}
+
+async function handleExportSingle() {
+  if (!selectedStudent.value) {
+    ElMessage.warning('请先选择学生')
+    return
+  }
+  try {
+    const res = await exportManual(selectedStudent.value.studentNo)
+    const filename = `${selectedStudent.value.studentName}_${selectedStudent.value.studentNo}_评价手册.docx`
+    downloadBlob(res, filename)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    ElMessage.error(error.message || '导出失败')
+  }
+}
+
+function openBatchExportDialog() {
+  if (!students.value.length) {
+    ElMessage.warning('暂无学生可导出')
+    return
+  }
+  selectedStudentNos.value = []
+  batchDialogVisible.value = true
+}
+
+function toggleSelectAll(checked) {
+  if (checked) {
+    selectedStudentNos.value = filteredStudents.value.map(s => s.studentNo)
+  } else {
+    selectedStudentNos.value = []
+  }
+}
+
+const isAllSelected = computed(() => {
+  return filteredStudents.value.length > 0 && filteredStudents.value.every(s => selectedStudentNos.value.includes(s.studentNo))
+})
+
+const isIndeterminate = computed(() => {
+  const selectedCount = filteredStudents.value.filter(s => selectedStudentNos.value.includes(s.studentNo)).length
+  return selectedCount > 0 && selectedCount < filteredStudents.value.length
+})
+
+async function confirmBatchExport() {
+  if (selectedStudentNos.value.length === 0) {
+    ElMessage.warning('请至少选择一名学生')
+    return
+  }
+  try {
+    const res = await exportManualBatch(selectedStudentNos.value)
+    downloadBlob(res, '选中学生评价手册导出.zip')
+    ElMessage.success(`成功导出 ${selectedStudentNos.value.length} 名学生的评价手册`)
+    batchDialogVisible.value = false
+  } catch (error) {
+    ElMessage.error(error.message || '批量导出失败')
+  }
+}
+
 function scrollToSection(id) {
   const el = document.getElementById(id)
   if (el) {
@@ -172,12 +255,19 @@ function handleScroll() {
 async function fetchStudents() {
   loading.value = true
   try {
-    const [res, groupRes] = await Promise.all([
-      getStudentList({ pageNum: 1, pageSize: 1000 }),
+    const [superviseRes, groupsRes] = await Promise.all([
+      getTeacherStudents(userStore.username, '指导'),
       getStudentGroupList()
     ])
-    students.value = res.list || []
-    studentGroups.value = groupRes || []
+    students.value = superviseRes
+    studentGroups.value = groupsRes || []
+    if (route.query.studentNo) {
+      const targetStudent = students.value.find(s => s.studentNo === route.query.studentNo)
+      if (targetStudent) {
+        await nextTick()
+        handleSelectStudent(targetStudent)
+      }
+    }
   } catch (error) {
     ElMessage.error(error.message || '获取学生列表失败')
   } finally {
@@ -230,7 +320,7 @@ onMounted(fetchStudents)
     <el-page-header title="评价手册查看" />
     <el-card class="table-card">
       <el-row :gutter="16">
-        <el-col :span="5">
+        <el-col :span="5" class="left-col">
           <div class="student-list-header">
             <el-input v-model="keyword" placeholder="搜索学号/姓名" clearable />
           </div>
@@ -242,6 +332,14 @@ onMounted(fetchStudents)
               <div class="student-no">{{ student.studentNo }}</div>
             </div>
             <el-empty v-if="!filteredStudents.length" description="暂无学生" />
+          </div>
+          <div class="action-bar">
+            <el-button type="primary" size="small" @click="handlePreview" :disabled="!selectedStudent"
+              class="action-btn">预览手册Word格式</el-button>
+            <el-button type="success" size="small" @click="handleExportSingle" :disabled="!selectedStudent"
+              class="action-btn">导出手册Word格式</el-button>
+            <el-button type="warning" size="small" @click="openBatchExportDialog"
+              class="action-btn">批量导出评价手册</el-button>
           </div>
         </el-col>
         <el-col :span="19">
@@ -255,8 +353,8 @@ onMounted(fetchStudents)
               </div>
               <div class="header-info">
                 <span>学生组：{{ groupNameMap[selectedStudent.studentGroupId] || '未分组' }}</span>
-                <span v-if="teachers">指导教师：{{ teachers.supervisorName || '-' }}</span>
-                <span v-if="teachers">评阅教师：{{ teachers.reviewerName || '-' }}</span>
+                <span>指导教师：{{ teachers?.supervisor?.teacherName || '-' }}</span>
+                <span>评阅教师：{{ teachers?.reviewer?.teacherName || '-' }}</span>
               </div>
             </div>
 
@@ -323,15 +421,15 @@ onMounted(fetchStudents)
                 total: getScore('开题成绩')
               }, {
                 name: '满分',
-                item1: 4,
-                item2: 4,
-                item3: 4,
-                total: 12
+                item1: 20,
+                item2: 20,
+                item3: 60,
+                total: 100
               }]" border>
                 <el-table-column prop="name" label="" width="80" />
-                <el-table-column prop="item1" label="调研资料获取能力" />
-                <el-table-column prop="item2" label="课题方案设计合理性" />
-                <el-table-column prop="item3" label="开题报告规范性与质量" />
+                <el-table-column prop="item1" label="选题质量" />
+                <el-table-column prop="item2" label="文献调研" />
+                <el-table-column prop="item3" label="开题报告" />
                 <el-table-column prop="total" label="总成绩" width="100" />
               </el-table>
               <div class="comment-block">
@@ -347,20 +445,14 @@ onMounted(fetchStudents)
               <el-table :data="[{
                 name: '得分',
                 item1: getSubScoreDisplay('外文翻译', 0),
-                item2: getSubScoreDisplay('外文翻译', 1),
-                item3: getSubScoreDisplay('外文翻译', 2),
                 total: getScore('外文翻译')
               }, {
                 name: '满分',
-                item1: 1,
-                item2: 1,
-                item3: 1,
-                total: 3
+                item1: 100,
+                total: 100
               }]" border>
                 <el-table-column prop="name" label="" width="80" />
-                <el-table-column prop="item1" label="外文阅读理解能力" />
-                <el-table-column prop="item2" label="专业词语翻译准确性" />
-                <el-table-column prop="item3" label="译文规范性与质量" />
+                <el-table-column prop="item1" label="翻译质量" />
                 <el-table-column prop="total" label="总成绩" width="100" />
               </el-table>
               <div class="comment-block">
@@ -381,15 +473,15 @@ onMounted(fetchStudents)
                 total: getScore('中期检查')
               }, {
                 name: '满分',
-                item1: 5,
-                item2: 5,
-                item3: 5,
-                total: 15
+                item1: 40,
+                item2: 40,
+                item3: 20,
+                total: 100
               }]" border>
                 <el-table-column prop="name" label="" width="80" />
-                <el-table-column prop="item1" label="完成进度情况" />
-                <el-table-column prop="item2" label="综合能力" />
-                <el-table-column prop="item3" label="已完成部分质量" />
+                <el-table-column prop="item1" label="进度完成" />
+                <el-table-column prop="item2" label="工作质量" />
+                <el-table-column prop="item3" label="工作态度" />
                 <el-table-column prop="total" label="总成绩" width="100" />
               </el-table>
               <div class="comment-block">
@@ -407,24 +499,18 @@ onMounted(fetchStudents)
                 item1: getSubScoreDisplay('指导评语', 0),
                 item2: getSubScoreDisplay('指导评语', 1),
                 item3: getSubScoreDisplay('指导评语', 2),
-                item4: getSubScoreDisplay('指导评语', 3),
-                item5: getSubScoreDisplay('指导评语', 4),
                 total: getScore('指导评语')
               }, {
                 name: '满分',
-                item1: 3,
-                item2: 3,
-                item3: 3,
-                item4: 3,
-                item5: 3,
-                total: 15
+                item1: 20,
+                item2: 50,
+                item3: 30,
+                total: 100
               }]" border>
                 <el-table-column prop="name" label="" width="80" />
-                <el-table-column prop="item1" label="方案设计能力" />
-                <el-table-column prop="item2" label="基本理论应用" />
-                <el-table-column prop="item3" label="分析解决问题能力" />
-                <el-table-column prop="item4" label="科学素养与态度" />
-                <el-table-column prop="item5" label="工作量与规范质量" />
+                <el-table-column prop="item1" label="学习态度" />
+                <el-table-column prop="item2" label="能力水平" />
+                <el-table-column prop="item3" label="完成质量" />
                 <el-table-column prop="total" label="总成绩" width="90" />
               </el-table>
               <div class="comment-block">
@@ -442,21 +528,18 @@ onMounted(fetchStudents)
                 item1: getSubScoreDisplay('评阅评语', 0),
                 item2: getSubScoreDisplay('评阅评语', 1),
                 item3: getSubScoreDisplay('评阅评语', 2),
-                item4: getSubScoreDisplay('评阅评语', 3),
                 total: getScore('评阅评语')
               }, {
                 name: '满分',
-                item1: 4,
-                item2: 4,
-                item3: 4,
-                item4: 3,
-                total: 15
+                item1: 15,
+                item2: 45,
+                item3: 40,
+                total: 100
               }]" border>
                 <el-table-column prop="name" label="" width="80" />
-                <el-table-column prop="item1" label="规范性与质量" />
-                <el-table-column prop="item2" label="基本理论运用" />
-                <el-table-column prop="item3" label="研究/设计方案" />
-                <el-table-column prop="item4" label="创新性" />
+                <el-table-column prop="item1" label="选题质量" />
+                <el-table-column prop="item2" label="能力水平" />
+                <el-table-column prop="item3" label="成果质量" />
                 <el-table-column prop="total" label="总成绩" width="90" />
               </el-table>
               <div class="comment-block">
@@ -484,21 +567,18 @@ onMounted(fetchStudents)
                 item1: getSubScoreDisplay('答辩成绩', 0),
                 item2: getSubScoreDisplay('答辩成绩', 1),
                 item3: getSubScoreDisplay('答辩成绩', 2),
-                item4: getSubScoreDisplay('答辩成绩', 3),
                 total: getScore('答辩成绩')
               }, {
                 name: '满分',
-                item1: 10,
-                item2: 10,
-                item3: 10,
-                item4: 10,
-                total: 40
+                item1: 35,
+                item2: 35,
+                item3: 30,
+                total: 100
               }]" border>
                 <el-table-column prop="name" label="" width="80" />
-                <el-table-column prop="item1" label="陈述情况" />
-                <el-table-column prop="item2" label="论文水平" />
-                <el-table-column prop="item3" label="工作量评价" />
-                <el-table-column prop="item4" label="答辩情况" />
+                <el-table-column prop="item1" label="报告内容" />
+                <el-table-column prop="item2" label="答辩过程" />
+                <el-table-column prop="item3" label="答辩小组" />
                 <el-table-column prop="total" label="答辩成绩" width="100" />
               </el-table>
               <div class="comment-block">
@@ -518,7 +598,7 @@ onMounted(fetchStudents)
                 { item: '指导教师', weight: '15%', score: getScore('指导评语') },
                 { item: '评阅教师', weight: '15%', score: getScore('评阅评语') },
                 { item: '答辩', weight: '40%', score: getScore('答辩成绩') }
-              ]" border size="small">
+              ]" border>
                 <el-table-column prop="item" label="成绩评定项" width="180" />
                 <el-table-column prop="weight" label="权重" width="100" />
                 <el-table-column prop="score" label="得分" />
@@ -557,6 +637,28 @@ onMounted(fetchStudents)
         </el-col>
       </el-row>
     </el-card>
+
+    <el-dialog v-model="batchDialogVisible" title="选择要导出的学生" width="500px">
+      <div style="margin-bottom: 12px;">
+        <el-checkbox :model-value="isAllSelected" :indeterminate="isIndeterminate"
+          @change="toggleSelectAll">全选当前列表</el-checkbox>
+        <span style="margin-left: 16px; color: #909399; font-size: 13px;">已选择 {{ selectedStudentNos.length }} 名学生</span>
+      </div>
+      <div style="max-height: 400px; overflow-y: auto; border: 1px solid #ebeef5; border-radius: 4px;">
+        <el-checkbox-group v-model="selectedStudentNos" style="width: 100%;">
+          <div v-for="student in filteredStudents" :key="student.studentNo"
+            style="padding: 10px 16px; border-bottom: 1px solid #f0f0f0;">
+            <el-checkbox :value="student.studentNo">
+              {{ student.studentName }}（{{ student.studentNo }}）- {{ student.className || '-' }}
+            </el-checkbox>
+          </div>
+        </el-checkbox-group>
+      </div>
+      <template #footer>
+        <el-button @click="batchDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmBatchExport">确认导出</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -569,11 +671,37 @@ onMounted(fetchStudents)
   margin-bottom: 12px;
 }
 
+.left-col {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 220px);
+}
+
 .student-list {
-  max-height: calc(100vh - 220px);
+  flex: 1;
   overflow-y: auto;
   border: 1px solid #e4e7ed;
   border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.action-bar {
+  flex-shrink: 0;
+  padding-top: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.action-btn {
+  width: 100%;
+  margin: 0 0 8px 0;
+  box-sizing: border-box;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.action-btn:last-child {
+  margin-bottom: 0;
 }
 
 .student-item {
@@ -605,7 +733,7 @@ onMounted(fetchStudents)
 
 .detail-panel {
   position: relative;
-  max-height: calc(100vh - 220px);
+  height: calc(100vh - 220px);
   overflow-y: auto;
   padding-right: 120px;
 }
@@ -868,11 +996,12 @@ onMounted(fetchStudents)
 
 .float-nav {
   position: fixed;
-  right: 85px;
+  right: 65px;
   top: 180px;
   background: #fff;
   border: 1px solid #e4e7ed;
   border-radius: 8px;
+ /* box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);*/
   padding: 8px 0;
   z-index: 100;
   min-width: 100px;

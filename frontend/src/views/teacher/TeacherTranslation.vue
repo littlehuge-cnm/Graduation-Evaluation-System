@@ -1,40 +1,42 @@
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, reactive, onMounted, computed, nextTick } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user.js'
-import { getScoreRecordTodo, addScoreRecord, updateScoreRecord, confirmScoreRecord, unlockScoreRecord, getScoreRecordList } from '@/api/scoreRecord.js'
-import { getStudentList } from '@/api/student.js'
+import { getTeacherStudents } from '@/api/teacher.js'
+import { getScoreRecordList, addScoreRecord, updateScoreRecord } from '@/api/scoreRecord.js'
 
 const route = useRoute()
 const userStore = useUserStore()
 const loading = ref(false)
 const students = ref([])
 const studentStatusMap = ref({})
-const allStudents = ref([])
 const keyword = ref('')
 const selectedStudent = ref(null)
 const records = ref([])
 
-const gradeOptions = ['优', '良', '中', '及格', '不及格']
+const ITEM_TYPE = '外文翻译'
+
+const subScores = [
+  { label: '对外文资料的阅读理解能力', full: 1, desc: '深入理解外文资料全文，译文能够做到兼顾上下文' },
+  { label: '专业词语翻译的准确性', full: 1, desc: '译文中专业术语准确、规范' },
+  { label: '译文规范性与质量', full: 1, desc: '译文的格式符合校论文规范、译文行文流畅' }
+]
 
 const form = reactive({
   recordId: null,
   score: null,
-  grade: '',
-  comment: '',
-  recordStatus: 1
+  subScores: [null, null, null],
+  comment: ''
 })
 
-function getItemStatus(record) {
-  if (record && record.score !== null && record.score !== undefined) {
-    if (record.recordStatus === 2) {
-      return { status: '已确认', type: 'success', order: 3 }
-    }
-    return { status: '已录入', type: 'warning', order: 2 }
-  }
-  return { status: '未录入', type: 'info', order: 1 }
-}
+const recordMap = computed(() => {
+  const map = {}
+  records.value.forEach(r => {
+    map[r.itemType] = r
+  })
+  return map
+})
 
 const filteredStudents = computed(() => {
   let list = students.value
@@ -47,51 +49,46 @@ const filteredStudents = computed(() => {
   return [...list].sort((a, b) => {
     const statusA = studentStatusMap.value[a.studentNo]
     const statusB = studentStatusMap.value[b.studentNo]
-    const orderA = statusA?.order || 1
-    const orderB = statusB?.order || 1
+    const orderA = statusA?.order || 2
+    const orderB = statusB?.order || 2
     if (orderA !== orderB) return orderA - orderB
     return a.studentNo?.localeCompare(b.studentNo)
   })
 })
 
-async function fetchData() {
+function parseSubScores(str) {
+  if (!str) return [null, null, null]
+  const arr = str.split(',').map(s => {
+    const num = parseFloat(s.trim())
+    return isNaN(num) ? null : num
+  })
+  while (arr.length < 3) arr.push(null)
+  return arr
+}
+
+function getItemStatus(recordList) {
+  const record = recordList.find(r => r.itemType === ITEM_TYPE)
+  if (record && record.score !== null && record.score !== undefined) {
+    return { status: '已录入', type: 'success', order: 2 }
+  }
+  return { status: '未录入', type: 'info', order: 1 }
+}
+
+async function fetchStudents() {
   loading.value = true
   try {
-    const todoRes = await getScoreRecordTodo(userStore.username, 'admin')
-    const todoList = todoRes || []
-    
-    const studentMap = new Map()
-    todoList.forEach(item => {
-      if (!studentMap.has(item.studentNo)) {
-        studentMap.set(item.studentNo, {
-          studentNo: item.studentNo,
-          studentName: item.studentName,
-          className: item.className,
-          major: item.major
-        })
-      }
-    })
-    students.value = Array.from(studentMap.values())
-    
+    const superviseRes = await getTeacherStudents(userStore.username, '指导')
+    students.value = superviseRes
     const statusMap = {}
-    await Promise.all(students.value.map(async (student) => {
+    await Promise.all(superviseRes.map(async (student) => {
       try {
         const recordList = await getScoreRecordList(student.studentNo)
-        const record = (recordList || []).find(r => r.itemType === '委员会评定')
-        statusMap[student.studentNo] = getItemStatus(record)
+        statusMap[student.studentNo] = getItemStatus(recordList || [])
       } catch (e) {
         statusMap[student.studentNo] = { status: '未录入', type: 'info', order: 1 }
       }
     }))
     studentStatusMap.value = statusMap
-    
-    try {
-      const studentRes = await getStudentList({ pageNum: 1, pageSize: 1000 })
-      allStudents.value = studentRes.list || []
-    } catch (e) {
-      console.error(e)
-    }
-    
     if (route.query.studentNo) {
       const targetStudent = students.value.find(s => s.studentNo === route.query.studentNo)
       if (targetStudent) {
@@ -100,7 +97,7 @@ async function fetchData() {
       }
     }
   } catch (error) {
-    ElMessage.error(error.message || '加载数据失败')
+    ElMessage.error(error.message || '获取学生列表失败')
   } finally {
     loading.value = false
   }
@@ -110,22 +107,41 @@ async function handleSelectStudent(student) {
   selectedStudent.value = student
   form.recordId = null
   form.score = null
-  form.grade = ''
+  form.subScores = [null, null, null]
   form.comment = ''
-  form.recordStatus = 1
   try {
     const recordRes = await getScoreRecordList(student.studentNo)
     records.value = recordRes || []
-    const record = records.value.find(r => r.itemType === '委员会评定')
+    const record = recordMap.value['外文翻译']
     if (record) {
       form.recordId = record.recordId
       form.score = record.score
-      form.grade = record.grade || ''
+      form.subScores = parseSubScores(record.subScores)
       form.comment = record.comment || ''
-      form.recordStatus = record.recordStatus || 1
     }
   } catch (error) {
-    ElMessage.error(error.message || '加载评定信息失败')
+    ElMessage.error(error.message || '加载成绩失败')
+  }
+}
+
+function calculateTotal() {
+  let total = 0
+  let hasValue = false
+  for (let i = 0; i < subScores.length; i++) {
+    const val = form.subScores[i]
+    if (val !== null && val !== undefined && !isNaN(val)) {
+      if (val < 0 || val > subScores[i].full) {
+        ElMessage.warning(`${subScores[i].label}分数应在0-${subScores[i].full}之间`)
+        return
+      }
+      total += Number(val)
+      hasValue = true
+    }
+  }
+  if (hasValue) {
+    form.score = Math.round(total * 10) / 10
+  } else {
+    form.score = null
   }
 }
 
@@ -134,91 +150,51 @@ async function handleSave() {
     ElMessage.warning('请先选择学生')
     return
   }
-  if (form.score === null || form.score === undefined) {
-    ElMessage.warning('请输入加权总分')
-    return
-  }
-  if (!form.grade) {
-    ElMessage.warning('请选择评定等级')
+  if (form.subScores.some(s => s === null || s === undefined || isNaN(s))) {
+    ElMessage.warning('请填写完整分项成绩')
     return
   }
   if (!form.comment) {
-    ElMessage.warning('请输入评语')
-    return
-  }
-  if (form.recordStatus === 2) {
-    ElMessage.warning('已确认的记录请先解锁再修改')
+    ElMessage.warning('请填写评语')
     return
   }
 
   try {
     const data = {
       studentNo: selectedStudent.value.studentNo,
-      itemType: '委员会评定',
+      itemType: '外文翻译',
       score: form.score,
-      grade: form.grade,
+      subScores: form.subScores.join(','),
       comment: form.comment,
       recordStatus: 2
     }
 
     if (form.recordId) {
       await updateScoreRecord(form.recordId, data)
-      ElMessage.success('修改成功')
     } else {
       await addScoreRecord(data, userStore.username)
-      ElMessage.success('录入成功')
     }
-    studentStatusMap.value[selectedStudent.value.studentNo] = { status: '已录入', type: 'warning', order: 2 }
+    studentStatusMap.value[selectedStudent.value.studentNo] = { status: '已录入', type: 'success', order: 2 }
+    ElMessage.success('保存成功')
     handleSelectStudent(selectedStudent.value)
-    fetchData()
   } catch (error) {
     ElMessage.error(error.message || '保存失败')
   }
 }
 
-async function handleConfirm() {
-  if (!form.recordId) {
-    ElMessage.warning('请先保存评定记录')
-    return
-  }
-  try {
-    await ElMessageBox.confirm('确认后将不能修改，是否继续？', '提示', { type: 'warning' })
-    await confirmScoreRecord(form.recordId)
-    ElMessage.success('确认成功')
-    studentStatusMap.value[selectedStudent.value.studentNo] = { status: '已确认', type: 'success', order: 3 }
-    handleSelectStudent(selectedStudent.value)
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error(error.message || '确认失败')
-    }
-  }
-}
-
-async function handleUnlock() {
-  if (!form.recordId) return
-  try {
-    await unlockScoreRecord(form.recordId)
-    ElMessage.success('解锁成功')
-    studentStatusMap.value[selectedStudent.value.studentNo] = { status: '已录入', type: 'warning', order: 2 }
-    handleSelectStudent(selectedStudent.value)
-  } catch (error) {
-    ElMessage.error(error.message || '解锁失败')
-  }
-}
-
 onMounted(() => {
-  fetchData()
+  fetchStudents()
 })
 </script>
 
 <template>
   <div v-loading="loading">
-    <el-page-header title="答辩委员会评定" />
+    <el-page-header title="外文翻译评定" />
     <el-card class="table-card">
       <el-row :gutter="16">
         <el-col :span="5" class="left-col">
           <div class="student-list-header">
-            <el-input v-model="keyword" placeholder="搜索学号/姓名" clearable />
+            <el-input v-model="keyword" placeholder="搜索学号/姓名" clearable @input="() => { }" />
           </div>
           <div class="student-list">
             <div v-for="student in filteredStudents" :key="student.studentNo" class="student-item"
@@ -226,13 +202,13 @@ onMounted(() => {
               @click="handleSelectStudent(student)">
               <div class="student-item-header">
                 <div class="student-name">{{ student.studentName }}</div>
-                <el-tag :type="studentStatusMap[student.studentNo]?.type || 'info'" size="small" effect="light">
+                <el-tag :type="studentStatusMap[student.studentNo]?.type || 'info'" size="small">
                   {{ studentStatusMap[student.studentNo]?.status || '未录入' }}
                 </el-tag>
               </div>
               <div class="student-no">{{ student.studentNo }}</div>
             </div>
-            <el-empty v-if="!filteredStudents.length" description="暂无待评定学生" />
+            <el-empty v-if="!filteredStudents.length" description="暂无学生" />
           </div>
         </el-col>
         <el-col :span="19">
@@ -246,39 +222,33 @@ onMounted(() => {
             </div>
 
             <div class="form-section">
-              <h4>答辩委员会评定</h4>
-              <el-form label-width="130px">
-                <el-form-item label="加权总分" required>
-                  <el-input-number v-model="form.score" :min="0" :max="100" :precision="1" :controls="false"
-                    style="width: 200px;" />
-                  <span style="margin-left: 12px; color: #909399; font-size: 14px;">满分100分</span>
+              <h4>外文翻译成绩评定</h4>
+              <el-form label-width="180px" class="translation-form">
+                <div class="sub-scores">
+                  <el-form-item v-for="(sub, idx) in subScores" :key="idx" :label="sub.label">
+                    <div class="score-row">
+                      <el-input-number v-model="form.subScores[idx]" :min="0" :max="sub.full" :step="0.1"
+                        :controls="false" @change="calculateTotal" style="width: 120px;" />
+                      <div class="score-right">
+                        <span class="score-hint">满分 {{ sub.full }} 分</span>
+                        <div class="score-desc">{{ sub.desc }}</div>
+                      </div>
+                    </div>
+                  </el-form-item>
+                </div>
+                <el-form-item label="外文翻译总成绩">
+                  <span class="total-score">{{ form.score ?? '-' }}<span class="total-full"> / 3分</span></span>
                 </el-form-item>
-                <el-form-item label="评定等级" required>
-                  <el-select v-model="form.grade" placeholder="请选择等级" style="width: 200px;"
-                    :disabled="form.recordStatus === 2">
-                    <el-option v-for="g in gradeOptions" :key="g" :label="g" :value="g" />
-                  </el-select>
-                </el-form-item>
-                <el-form-item label="委员会评语" required>
-                  <el-input v-model="form.comment" type="textarea" :rows="8"
-                    placeholder="请输入答辩委员会综合评语" :disabled="form.recordStatus === 2" />
-                </el-form-item>
-                <el-form-item label="状态">
-                  <el-tag :type="form.recordStatus === 2 ? 'success' : 'warning'">
-                    {{ form.recordStatus === 2 ? '已确认' : '已录入' }}
-                  </el-tag>
+                <el-form-item label="评语" required>
+                  <el-input v-model="form.comment" type="textarea" :rows="6" placeholder="请输入外文翻译评语，对学生翻译质量进行评价" />
                 </el-form-item>
               </el-form>
               <div class="form-actions">
-                <el-button type="primary" @click="handleSave" :disabled="form.recordStatus === 2">保存</el-button>
-                <el-button v-if="form.recordId && form.recordStatus !== 2" type="success" @click="handleConfirm">确认</el-button>
-                <el-button v-if="form.recordId && form.recordStatus === 2" type="warning" @click="handleUnlock">解锁</el-button>
+                <el-button type="primary" @click="handleSave">保存</el-button>
               </div>
             </div>
           </div>
-          <div v-else class="empty-select">
-            <span>请选择左侧学生进行委员会评定</span>
-          </div>
+          <div v-else class="empty-select">请选择左侧学生进行评定</div>
         </el-col>
       </el-row>
     </el-card>
@@ -327,6 +297,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 4px;
 }
 
 .student-name {
@@ -337,7 +308,7 @@ onMounted(() => {
 .student-no {
   font-size: 12px;
   color: #909399;
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .detail-panel {
@@ -366,7 +337,7 @@ onMounted(() => {
   flex-wrap: wrap;
   color: #606266;
   font-size: 14px;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .form-section {
@@ -389,6 +360,41 @@ onMounted(() => {
   margin-top: 20px;
   padding-top: 16px;
   border-top: 1px solid #e4e7ed;
+}
+
+.score-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.score-right {
+  display: flex;
+  flex-direction: column;
+}
+
+.score-hint {
+  color: #909399;
+  font-size: 14px;
+}
+
+.score-desc {
+  color: #909399;
+  font-size: 13px;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.total-score {
+  font-size: 22px;
+  font-weight: 700;
+  color: #409eff;
+}
+
+.total-full {
+  font-size: 14px;
+  font-weight: 400;
+  color: #909399;
 }
 
 .empty-select {

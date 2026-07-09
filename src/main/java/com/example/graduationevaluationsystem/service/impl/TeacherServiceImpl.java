@@ -47,7 +47,20 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
 
     @Override
     public List<TeacherStudentVO> getStudentsByTeacherNo(String teacherNo, String relationType) {
-        return baseMapper.selectStudentsByTeacherNo(teacherNo, relationType);
+        List<TeacherStudentVO> list = baseMapper.selectStudentsByTeacherNo(teacherNo, relationType);
+        list.forEach(this::fillRelationStatusDesc);
+        return list;
+    }
+
+    private void fillRelationStatusDesc(TeacherStudentVO vo) {
+        Integer status = vo.getRelationStatus();
+        if (status != null) {
+            vo.setRelationStatusDesc(switch (status) {
+                case 1 -> "生效";
+                case 2 -> "已解除";
+                default -> "未知";
+            });
+        }
     }
 
     /**

@@ -8,6 +8,8 @@ const loading = ref(false)
 const tableData = ref([])
 const teacherOptions = ref([])
 const keyword = ref('')
+const currentPage = ref(1)
+const pageSize = ref(10)
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -29,7 +31,7 @@ const rules = {
   memberNo: [{ required: true, message: '请选择普通成员', trigger: 'change' }]
 }
 
-const filteredData = computed(() => {
+const filteredDataAll = computed(() => {
   const k = keyword.value.trim().toLowerCase()
   if (!k) return tableData.value
   return tableData.value.filter(item =>
@@ -39,6 +41,23 @@ const filteredData = computed(() => {
     item.memberName?.toLowerCase().includes(k)
   )
 })
+
+const total = computed(() => filteredDataAll.value.length)
+
+const filteredData = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredDataAll.value.slice(start, end)
+})
+
+function handlePageChange(page) {
+  currentPage.value = page
+}
+
+function handleSizeChange(size) {
+  pageSize.value = size
+  currentPage.value = 1
+}
 
 async function fetchData() {
   loading.value = true
@@ -61,6 +80,7 @@ async function fetchTeachers() {
 
 function handleSearch() {
   keyword.value = keyword.value.trim()
+  currentPage.value = 1
 }
 
 function handleAdd() {
@@ -165,6 +185,11 @@ onMounted(() => {
           </template>
         </el-table-column>
       </el-table>
+      <div class="pagination-container">
+        <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :page-sizes="[10, 20, 50, 100]"
+          :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="handleSizeChange"
+          @current-change="handlePageChange" />
+      </div>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
@@ -215,5 +240,11 @@ onMounted(() => {
 .search-bar {
   display: flex;
   gap: 8px;
+}
+
+.pagination-container {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

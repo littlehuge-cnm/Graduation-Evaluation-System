@@ -28,14 +28,6 @@ public class StageStatusServiceImpl extends ServiceImpl<StageStatusMapper, Stage
      */
     private static final List<String> STAGES = List.of("开题", "中期", "答辩");
 
-    /**
-     * 前置环节映射：中期→开题，答辩→中期；开题无前置
-     */
-    private static final Map<String, String> PREREQUISITE_STAGE = Map.of(
-            "中期", "开题",
-            "答辩", "中期"
-    );
-
     private final StudentMapper studentMapper;
 
     @Override
@@ -73,15 +65,6 @@ public class StageStatusServiceImpl extends ServiceImpl<StageStatusMapper, Stage
     @Override
     public void startStage(String studentNo, String stage) {
         validateStage(stage);
-
-        // 校验前置环节是否已完成
-        String prerequisite = PREREQUISITE_STAGE.get(stage);
-        if (prerequisite != null) {
-            Integer prereqStatus = getStageStatusCode(studentNo, prerequisite);
-            if (prereqStatus == null || !prereqStatus.equals(StageStatusType.COMPLETED.getCode())) {
-                throw new RuntimeException("启动" + stage + "环节需要" + prerequisite + "环节已完成");
-            }
-        }
 
         // 查询当前环节记录
         StageStatus record = getStageRecord(studentNo, stage);
@@ -151,7 +134,7 @@ public class StageStatusServiceImpl extends ServiceImpl<StageStatusMapper, Stage
             StageStatus record = getStageRecord(student.getStudentNo(), stage);
             if (record != null && record.getStatus() != null
                     && (record.getStatus().equals(StageStatusType.IN_PROGRESS.getCode())
-                    || record.getStatus().equals(StageStatusType.COMPLETED.getCode()))) {
+                            || record.getStatus().equals(StageStatusType.COMPLETED.getCode()))) {
                 skipCount++;
                 continue;
             }
@@ -181,8 +164,8 @@ public class StageStatusServiceImpl extends ServiceImpl<StageStatusMapper, Stage
         validateStage(stage);
 
         // 查询学生组内所有学生在指定环节的状态
-        List<StageStatusOverviewVO.StudentStageStatusItem> items =
-                baseMapper.selectOverviewByGroup(studentGroupId, stage);
+        List<StageStatusOverviewVO.StudentStageStatusItem> items = baseMapper.selectOverviewByGroup(studentGroupId,
+                stage);
 
         // 统计各状态人数
         Map<String, Integer> statistics = new LinkedHashMap<>();
@@ -226,7 +209,7 @@ public class StageStatusServiceImpl extends ServiceImpl<StageStatusMapper, Stage
     private StageStatus getStageRecord(String studentNo, String stage) {
         LambdaQueryWrapper<StageStatus> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(StageStatus::getStudentNo, studentNo)
-               .eq(StageStatus::getStage, stage);
+                .eq(StageStatus::getStage, stage);
         return getOne(wrapper);
     }
 

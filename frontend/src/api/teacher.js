@@ -27,3 +27,9 @@ export function importTeachers(file) {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
 }
+
+export function getTeacherStudents(teacherNo, relationType) {
+  return request.get(`/teachers/${teacherNo}/students`, {
+    params: { relationType }
+  })
+}

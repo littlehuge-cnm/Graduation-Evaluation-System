@@ -24,6 +24,8 @@ const form = reactive({
   comment: ''
 })
 
+const canEditScore = ref(false)
+
 const gradeOptions = ['优', '良', '中', '及格', '不及格']
 
 const scoreItems = [
@@ -242,6 +244,7 @@ async function handleSelectStudent(student) {
   form.score = null
   form.grade = ''
   form.comment = ''
+  canEditScore.value = false
   loading.value = true
   try {
     const [recordRes, teacherRes] = await Promise.all([
@@ -252,7 +255,7 @@ async function handleSelectStudent(student) {
     teachers.value = teacherRes || null
     const record = recordRes.find(r => r.itemType === '委员会评定')
     if (record) {
-      form.recordId = record.id
+      form.recordId = record.recordId
       form.comment = record.comment || ''
       if (!canSubmit.value) {
         form.score = record.score
@@ -321,14 +324,14 @@ onMounted(fetchStudents)
             <div v-for="student in filteredStudents" :key="student.studentNo" class="student-item"
               :class="{ active: selectedStudent?.studentNo === student.studentNo }"
               @click="handleSelectStudent(student)">
-              <div class="student-info">
+              <div class="student-item-header">
                 <div class="student-name">{{ student.studentName }}</div>
-                <div class="student-no">{{ student.studentNo }}</div>
+                <el-tag v-if="studentStatusMap[student.studentNo]" :type="studentStatusMap[student.studentNo].type"
+                  size="small" effect="light">
+                  {{ studentStatusMap[student.studentNo].status }}
+                </el-tag>
               </div>
-              <el-tag v-if="studentStatusMap[student.studentNo]" :type="studentStatusMap[student.studentNo].type"
-                size="small" effect="light">
-                {{ studentStatusMap[student.studentNo].status }}
-              </el-tag>
+              <div class="student-no">{{ student.studentNo }}</div>
             </div>
             <el-empty v-if="!filteredStudents.length" description="暂无学生" />
           </div>
@@ -351,7 +354,7 @@ onMounted(fetchStudents)
 
             <div class="section">
               <h4>各环节成绩汇总</h4>
-              <el-table :data="getTableData()" border size="small">
+              <el-table :data="getTableData()" border>
                 <el-table-column prop="label" label="成绩项" width="180" />
                 <el-table-column prop="weight" label="权重" width="100" />
                 <el-table-column prop="fullScore" label="满分" width="100" />
@@ -403,12 +406,12 @@ onMounted(fetchStudents)
               <el-form :model="form" label-width="120px" class="evaluate-form">
                 <el-form-item label="总评成绩">
                   <el-input-number v-model="form.score" :min="0" :max="100" :precision="2" size="large"
-                    :disabled="canSubmit" />
+                    :controls="false" :disabled="!canEditScore" />
                   <span class="form-tip">分（满分100分），所有环节完成后自动计算</span>
                 </el-form-item>
                 <el-form-item label="评定等级">
                   <el-select v-model="form.grade" placeholder="自动计算" size="large" style="width: 200px;"
-                    :disabled="canSubmit">
+                    :disabled="!canEditScore">
                     <el-option v-for="g in gradeOptions" :key="g" :label="g" :value="g" />
                   </el-select>
                 </el-form-item>
@@ -419,6 +422,9 @@ onMounted(fetchStudents)
                 <el-form-item>
                   <el-button type="primary" size="large" @click="handleSubmit" :disabled="!canSubmit">
                     {{ form.recordId ? '修改评定' : '提交评定' }}
+                  </el-button>
+                  <el-button type="text" @click="canEditScore = !canEditScore" style="margin-left: 24px;">
+                    {{ canEditScore ? '锁定修改' : '特殊情况启用成绩/等级编辑' }}
                   </el-button>
                 </el-form-item>
               </el-form>
@@ -444,7 +450,7 @@ onMounted(fetchStudents)
 }
 
 .student-list {
-  max-height: calc(100vh - 220px);
+  height: calc(100vh - 220px);
   overflow-y: auto;
   border: 1px solid #e4e7ed;
   border-radius: 4px;
@@ -455,9 +461,6 @@ onMounted(fetchStudents)
   border-bottom: 1px solid #ebeef5;
   cursor: pointer;
   transition: background-color 0.2s;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
 .student-item:hover {
@@ -469,9 +472,10 @@ onMounted(fetchStudents)
   border-left: 3px solid #409eff;
 }
 
-.student-info {
-  flex: 1;
-  min-width: 0;
+.student-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .student-name {
@@ -488,18 +492,19 @@ onMounted(fetchStudents)
 .detail-panel {
   height: calc(100vh - 220px);
   overflow-y: auto;
+  padding-right: 20px;
 }
 
 .detail-header {
-  margin-bottom: 16px;
-  margin-left: 20px;
+  margin-bottom: 20px;
   padding-bottom: 16px;
   border-bottom: 1px solid #e4e7ed;
+  padding-left: 12px;
 }
 
 .detail-header h3 {
-  margin: 0 0 12px;
-  font-size: 22px;
+  margin: 0;
+  font-size: 20px;
   color: #303133;
   font-weight: 600;
 }
@@ -510,7 +515,7 @@ onMounted(fetchStudents)
   flex-wrap: wrap;
   color: #606266;
   font-size: 14px;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .section {
@@ -526,7 +531,16 @@ onMounted(fetchStudents)
   padding-bottom: 12px;
   border-bottom: 2px solid #409eff;
   color: #303133;
-  font-size: 20px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+:deep(.el-table) {
+  font-size: 14px;
+}
+
+:deep(.el-table th) {
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -534,6 +548,8 @@ onMounted(fetchStudents)
   color: #409eff;
   cursor: pointer;
   text-decoration: underline;
+  font-size: 15px;
+  font-weight: 500;
 }
 
 .score-link:hover {
@@ -543,6 +559,7 @@ onMounted(fetchStudents)
 .score-incomplete {
   color: #f56c6c;
   font-weight: 500;
+  font-size: 15px;
 }
 
 .warning-tip {
@@ -613,11 +630,7 @@ onMounted(fetchStudents)
 }
 
 .form-section {
-  background-color: #fafcff;
-}
-
-.evaluate-form {
-  margin-top: 0;
+  background-color: #fff;
 }
 
 .form-tip {
@@ -634,9 +647,13 @@ onMounted(fetchStudents)
 }
 
 .empty-select {
-  padding: 60px;
-  text-align: center;
+  height: calc(100vh - 220px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #909399;
   font-size: 14px;
+  background-color: #fafafa;
+  border-radius: 4px;
 }
 </style>

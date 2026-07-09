@@ -61,6 +61,26 @@ public class TeacherGroupController {
     @Operation(summary = "修改教师分组", description = "超管修改教师分组信息")
     public Result<Void> update(@Parameter(description = "分组编号") @PathVariable Integer groupId,
                                @RequestBody TeacherGroupDTO dto) {
+        TeacherGroup existGroup = teacherGroupService.getById(groupId);
+        if (existGroup == null) {
+            return Result.error(404, "教师分组不存在");
+        }
+        if (dto.getLeaderNo().equals(dto.getSecretaryNo())
+                || dto.getLeaderNo().equals(dto.getMemberNo())
+                || dto.getSecretaryNo().equals(dto.getMemberNo())) {
+            return Result.error(400, "组内教师工号不能重复");
+        }
+        String[] teacherNos = {dto.getLeaderNo(), dto.getSecretaryNo(), dto.getMemberNo()};
+        for (String teacherNo : teacherNos) {
+            long count = teacherGroupService.count(new LambdaQueryWrapper<TeacherGroup>()
+                    .ne(TeacherGroup::getGroupId, groupId)
+                    .and(w -> w.eq(TeacherGroup::getLeaderNo, teacherNo)
+                            .or().eq(TeacherGroup::getSecretaryNo, teacherNo)
+                            .or().eq(TeacherGroup::getMemberNo, teacherNo)));
+            if (count > 0) {
+                return Result.error(400, "教师工号 " + teacherNo + " 已在其他分组中，不能重复分组");
+            }
+        }
         TeacherGroup group = new TeacherGroup();
         BeanUtils.copyProperties(dto, group);
         group.setGroupId(groupId);

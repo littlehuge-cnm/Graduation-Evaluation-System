@@ -11,6 +11,10 @@ public class TeacherStudentVO {
     private Integer id;
     private String studentNo;
     private String studentName;
+    private String className;
+    private String major;
+    private String grade;
+    private Integer studentGroupId;
     private String teacherNo;
     private String teacherName;
     private String relationType;

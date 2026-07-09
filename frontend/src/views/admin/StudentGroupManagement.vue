@@ -13,6 +13,8 @@ const loading = ref(false)
 const tableData = ref([])
 const allStudents = ref([])
 const keyword = ref('')
+const currentPage = ref(1)
+const pageSize = ref(10)
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -72,7 +74,7 @@ const groupMap = computed(() => {
   return Object.fromEntries(tableData.value.map(g => [g.groupId, g.groupName]))
 })
 
-const filteredGroups = computed(() => {
+const filteredGroupsAll = computed(() => {
   const k = keyword.value.trim().toLowerCase()
   if (!k) return tableData.value
   return tableData.value.filter(g => {
@@ -87,8 +89,26 @@ const filteredGroups = computed(() => {
   })
 })
 
+const total = computed(() => filteredGroupsAll.value.length)
+
+const filteredGroups = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredGroupsAll.value.slice(start, end)
+})
+
+function handlePageChange(page) {
+  currentPage.value = page
+}
+
+function handleSizeChange(size) {
+  pageSize.value = size
+  currentPage.value = 1
+}
+
 function handleSearch() {
   keyword.value = keyword.value.trim()
+  currentPage.value = 1
 }
 
 const selectedSet = computed(() => new Set(form.studentNos))
@@ -282,6 +302,11 @@ onMounted(() => {
           </template>
         </el-table-column>
       </el-table>
+      <div class="pagination-container">
+        <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :page-sizes="[10, 20, 50, 100]"
+          :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="handleSizeChange"
+          @current-change="handlePageChange" />
+      </div>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="900px" destroy-on-close>
@@ -355,6 +380,12 @@ onMounted(() => {
 .search-bar {
   display: flex;
   gap: 8px;
+}
+
+.pagination-container {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .student-tags {

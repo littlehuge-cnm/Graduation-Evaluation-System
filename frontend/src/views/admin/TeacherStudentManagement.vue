@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTeacherStudentList, batchAssignTeacherStudent } from '@/api/teacherStudent.js'
 import { getTeacherList } from '@/api/teacher.js'
@@ -10,7 +10,14 @@ const students = ref([])
 const relations = ref([])
 const teacherOptions = ref([])
 const keyword = ref('')
-const selectedStudents = ref([])
+const selectedStudentNos = ref(new Set())
+const currentPage = ref(1)
+const pageSize = ref(10)
+const tableRef = ref(null)
+
+const selectedStudents = computed(() => {
+  return students.value.filter(s => selectedStudentNos.value.has(s.studentNo))
+})
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -27,7 +34,7 @@ const rules = {
   reviewTeacherNo: [{ required: false }]
 }
 
-const tableData = computed(() => {
+const tableDataAll = computed(() => {
   const k = keyword.value.trim().toLowerCase()
   const list = students.value.map(s => {
     const guide = relations.value.find(r => r.studentNo === s.studentNo && r.relationType === '指导' && r.relationStatus === 1)
@@ -49,6 +56,23 @@ const tableData = computed(() => {
   )
 })
 
+const total = computed(() => tableDataAll.value.length)
+
+const tableData = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return tableDataAll.value.slice(start, end)
+})
+
+function handlePageChange(page) {
+  currentPage.value = page
+}
+
+function handleSizeChange(size) {
+  pageSize.value = size
+  currentPage.value = 1
+}
+
 async function fetchData() {
   loading.value = true
   try {
@@ -64,11 +88,19 @@ async function fetchData() {
     ElMessage.error(error.message || '获取数据失败')
   } finally {
     loading.value = false
+    nextTick(() => {
+      if (tableRef.value) {
+        tableData.value.forEach(row => {
+          tableRef.value.toggleRowSelection(row, selectedStudentNos.value.has(row.studentNo))
+        })
+      }
+    })
   }
 }
 
 function handleSearch() {
   keyword.value = keyword.value.trim()
+  currentPage.value = 1
 }
 
 function handleEdit(row) {
@@ -152,7 +184,7 @@ async function handleSubmit() {
     await batchAssignTeacherStudent(list)
     ElMessage.success('分配成功')
     dialogVisible.value = false
-    selectedStudents.value = []
+    selectedStudentNos.value.clear()
     await fetchData()
   } catch (error) {
     ElMessage.error(error.message || '分配失败')
@@ -160,8 +192,25 @@ async function handleSubmit() {
 }
 
 function handleSelectionChange(rows) {
-  selectedStudents.value = rows
+  tableData.value.forEach(s => {
+    if (selectedStudentNos.value.has(s.studentNo)) {
+      selectedStudentNos.value.delete(s.studentNo)
+    }
+  })
+  rows.forEach(s => {
+    selectedStudentNos.value.add(s.studentNo)
+  })
 }
+
+watch([currentPage, pageSize], () => {
+  nextTick(() => {
+    if (tableRef.value) {
+      tableData.value.forEach(row => {
+        tableRef.value.toggleRowSelection(row, selectedStudentNos.value.has(row.studentNo))
+      })
+    }
+  })
+})
 
 onMounted(fetchData)
 </script>
@@ -183,8 +232,9 @@ onMounted(fetchData)
         </div>
       </template>
 
-      <el-table v-loading="loading" :data="tableData" border @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="55" />
+      <el-table ref="tableRef" v-loading="loading" :data="tableData" border row-key="studentNo"
+        @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="55" reserve-selection />
         <el-table-column prop="studentNo" label="学号" min-width="120" />
         <el-table-column prop="studentName" label="学生姓名" min-width="120" />
         <el-table-column label="指导教师" min-width="180">
@@ -206,6 +256,11 @@ onMounted(fetchData)
           </template>
         </el-table-column>
       </el-table>
+      <div class="pagination-container">
+        <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :page-sizes="[10, 20, 50, 100]"
+          :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="handleSizeChange"
+          @current-change="handlePageChange" />
+      </div>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
@@ -254,5 +309,11 @@ onMounted(fetchData)
   color: #909399;
   font-size: 12px;
   margin-left: 4px;
+}
+
+.pagination-container {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

@@ -30,26 +30,22 @@ public class ScoreRecordServiceImpl extends ServiceImpl<ScoreRecordMapper, Score
             "组长", List.of(ItemType.OPENING_SCORE, ItemType.MIDTERM_CHECK, ItemType.DEFENSE_SCORE),
             "秘书", List.of(ItemType.DEFENSE_RECORD),
             "指导教师", List.of(ItemType.TRANSLATION, ItemType.SUPERVISION_COMMENT),
-            "评阅教师", List.of(ItemType.REVIEW_COMMENT)
-    );
+            "评阅教师", List.of(ItemType.REVIEW_COMMENT));
 
     @Override
     public Integer createRecord(String studentNo, String itemType, String subScores,
-                                BigDecimal score, String grade, String comment,
-                                Integer recordStatus, String recorderNo) {
+            BigDecimal score, String grade, String comment,
+            Integer recordStatus, String recorderNo) {
         // 1. 校验条目类型合法
         ItemType type = ItemType.fromName(itemType);
 
         // 2. 校验分项成绩格式
         type.validateSubScores(subScores);
 
-        // 3. 校验环节状态
-        validateStageStatus(studentNo, type);
-
-        // 4. 校验重复录入
+        // 3. 校验重复录入
         LambdaQueryWrapper<ScoreRecord> dupWrapper = new LambdaQueryWrapper<>();
         dupWrapper.eq(ScoreRecord::getStudentNo, studentNo)
-                  .eq(ScoreRecord::getItemType, itemType);
+                .eq(ScoreRecord::getItemType, itemType);
         if (count(dupWrapper) > 0) {
             throw new RuntimeException("该学生已存在" + itemType + "记录，请修改而非重复录入");
         }
@@ -80,7 +76,7 @@ public class ScoreRecordServiceImpl extends ServiceImpl<ScoreRecordMapper, Score
 
     @Override
     public void updateRecord(Integer id, String subScores, BigDecimal score,
-                             String grade, String comment, Integer recordStatus) {
+            String grade, String comment, Integer recordStatus) {
         ScoreRecord existing = getById(id);
         if (existing == null) {
             throw new RuntimeException("评价记录不存在");
@@ -92,11 +88,8 @@ public class ScoreRecordServiceImpl extends ServiceImpl<ScoreRecordMapper, Score
             throw new RuntimeException("该记录已确认，不可修改，如需修改请联系管理员解锁");
         }
 
-        // 校验环节状态
-        ItemType type = ItemType.fromName(existing.getItemType());
-        validateStageStatus(existing.getStudentNo(), type);
-
         // 校验分项成绩（如果传了 subScores）
+        ItemType type = ItemType.fromName(existing.getItemType());
         if (subScores != null) {
             type.validateSubScores(subScores);
             existing.setSubScores(subScores);
@@ -195,7 +188,7 @@ public class ScoreRecordServiceImpl extends ServiceImpl<ScoreRecordMapper, Score
         for (ScoreRecordTodoVO item : studentRoles) {
             studentMap.putIfAbsent(item.getStudentNo(), item);
             studentRolesMap.computeIfAbsent(item.getStudentNo(), k -> new LinkedHashSet<>())
-                           .add(item.getRecorderRole());
+                    .add(item.getRecorderRole());
         }
 
         // 3. 查询这些学生的全部已有评价记录
@@ -208,7 +201,7 @@ public class ScoreRecordServiceImpl extends ServiceImpl<ScoreRecordMapper, Score
         Map<String, Map<String, ScoreRecord>> recordIndex = new HashMap<>();
         for (ScoreRecord r : existingRecords) {
             recordIndex.computeIfAbsent(r.getStudentNo(), k -> new HashMap<>())
-                       .put(r.getItemType(), r);
+                    .put(r.getItemType(), r);
         }
 
         // 4. 为每个学生按角色生成待录入项
@@ -260,32 +253,6 @@ public class ScoreRecordServiceImpl extends ServiceImpl<ScoreRecordMapper, Score
     }
 
     // ==================== 内部方法 ====================
-
-    /**
-     * 校验环节状态是否满足录入要求
-     */
-    private void validateStageStatus(String studentNo, ItemType type) {
-        Integer requiredStatus = type.getRequiredStageStatus();
-        if (requiredStatus == null) {
-            return; // 不强制校验
-        }
-
-        Integer currentStatus = baseMapper.selectStageStatus(studentNo, type.getStage());
-        if (currentStatus == null) {
-            throw new RuntimeException("学生" + studentNo + "的" + type.getStage() + "环节状态不存在");
-        }
-        if (!currentStatus.equals(requiredStatus)) {
-            String requiredDesc = requiredStatus == 2 ? "进行中" : "已完成";
-            String currentDesc = switch (currentStatus) {
-                case 1 -> "未开始";
-                case 2 -> "进行中";
-                case 3 -> "已完成";
-                default -> "未知";
-            };
-            throw new RuntimeException(type.getName() + "需要" + type.getStage() + "环节处于" + requiredDesc
-                    + "，当前状态为" + currentDesc);
-        }
-    }
 
     /**
      * 委员会评定加权计算

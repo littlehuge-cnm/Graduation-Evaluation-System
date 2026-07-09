@@ -1,197 +1,346 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user.js'
-import { getMyStudentDocuments, saveDocument, updateDocument, submitDocument } from '@/api/document.js'
+import { getTeacherStudents } from '@/api/teacher.js'
+import { getStudentDocuments } from '@/api/student.js'
+import { saveDocument, updateDocument } from '@/api/document.js'
 
+const route = useRoute()
 const userStore = useUserStore()
 const loading = ref(false)
-const activeDocType = ref('任务书')
-const tableData = ref([])
+const students = ref([])
+const studentDocStatusMap = ref({})
+const keyword = ref('')
+const selectedStudent = ref(null)
 
-const dialogVisible = ref(false)
-const dialogTitle = ref('')
-const isEdit = ref(false)
-const formRef = ref(null)
-const form = reactive({
+const CONTENT_SPLIT = '\n\n=====基本要求=====\n\n'
+
+const taskForm = reactive({
   id: null,
-  studentNo: '',
-  studentName: '',
-  docType: '任务书',
   title: '',
   subjectCategory: '',
   subjectType: '',
   subjectNewOld: '',
-  content: '',
-  status: 1
+  mainContent: '',
+  basicRequirement: ''
 })
 
-const rules = {
-  title: [{ required: true, message: '请输入题目', trigger: 'blur' }],
-  content: [{ required: true, message: '请输入内容', trigger: 'blur' }]
-}
+const guideForm = reactive({
+  id: null,
+  content: ''
+})
 
-const docTypeOptions = ['任务书', '指导书']
-const categoryOptions = ['A', 'B', 'C', 'D']
-const typeOptions = ['A', 'B', 'C']
-const newOldOptions = ['A', 'B']
-const statusOptions = [
-  { label: '草稿', value: 1 },
-  { label: '已提交', value: 2 }
+const categoryOptions = [
+  { value: 'A', label: 'A.工程设计' },
+  { value: 'B', label: 'B.科学研究' },
+  { value: 'C', label: 'C.技术开发' },
+  { value: 'D', label: 'D.其他' }
+]
+const typeOptions = [
+  { value: 'A', label: 'A.真题' },
+  { value: 'B', label: 'B.模拟题（假题）' },
+  { value: 'C', label: 'C.真题假作' }
+]
+const newOldOptions = [
+  { value: 'A', label: 'A.新题' },
+  { value: 'B', label: 'B.旧题' }
 ]
 
-async function fetchData() {
+const filteredStudents = computed(() => {
+  let list = students.value
+  if (keyword.value) {
+    const k = keyword.value.trim().toLowerCase()
+    list = list.filter(s =>
+      s.studentNo?.toLowerCase().includes(k) || s.studentName?.toLowerCase().includes(k)
+    )
+  }
+  return [...list].sort((a, b) => {
+    const statusA = studentDocStatusMap.value[a.studentNo]
+    const statusB = studentDocStatusMap.value[b.studentNo]
+    const orderA = statusA?.order || 1
+    const orderB = statusB?.order || 1
+    if (orderA !== orderB) return orderA - orderB
+    return a.studentNo?.localeCompare(b.studentNo)
+  })
+})
+
+function getDocStatus(taskDoc, guideDoc) {
+  const hasTask = !!(taskDoc && taskDoc.status === 2)
+  const hasGuide = !!(guideDoc && guideDoc.status === 2)
+  if (hasTask && hasGuide) return { status: '已录入', type: 'success', order: 3 }
+  if (hasTask || hasGuide) return { status: '部分录入', type: 'warning', order: 2 }
+  return { status: '未录入', type: 'info', order: 1 }
+}
+
+async function fetchStudents() {
   loading.value = true
   try {
-    const res = await getMyStudentDocuments(userStore.username, activeDocType.value)
-    tableData.value = res || []
+    const superviseRes = await getTeacherStudents(userStore.username, '指导')
+    students.value = superviseRes
+    const statusMap = {}
+    await Promise.all(superviseRes.map(async (student) => {
+      try {
+        const [taskRes, guideRes] = await Promise.all([
+          getStudentDocuments(student.studentNo, '任务书'),
+          getStudentDocuments(student.studentNo, '指导书')
+        ])
+        const taskDoc = taskRes && taskRes.length > 0 ? taskRes[0] : null
+        const guideDoc = guideRes && guideRes.length > 0 ? guideRes[0] : null
+        statusMap[student.studentNo] = getDocStatus(taskDoc, guideDoc)
+      } catch (e) {
+        statusMap[student.studentNo] = { status: '未提交', type: 'info', order: 1 }
+      }
+    }))
+    studentDocStatusMap.value = statusMap
+    if (route.query.studentNo) {
+      const targetStudent = students.value.find(s => s.studentNo === route.query.studentNo)
+      if (targetStudent) {
+        await nextTick()
+        handleSelectStudent(targetStudent)
+      }
+    }
+  } catch (error) {
+    ElMessage.error(error.message || '获取学生列表失败')
   } finally {
     loading.value = false
   }
 }
 
-function handleDocTypeChange() {
-  fetchData()
+async function fetchDocs() {
+  if (!selectedStudent.value) return
+  loading.value = true
+  try {
+    const [taskRes, guideRes] = await Promise.all([
+      getStudentDocuments(selectedStudent.value.studentNo, '任务书'),
+      getStudentDocuments(selectedStudent.value.studentNo, '指导书')
+    ])
+    const taskDoc = taskRes && taskRes.length > 0 ? taskRes[0] : null
+    const guideDoc = guideRes && guideRes.length > 0 ? guideRes[0] : null
+
+    if (taskDoc) {
+      const content = taskDoc.content || ''
+      const splitIndex = content.indexOf(CONTENT_SPLIT)
+      let mainContent = ''
+      let basicRequirement = ''
+      if (splitIndex >= 0) {
+        mainContent = content.substring(0, splitIndex)
+        basicRequirement = content.substring(splitIndex + CONTENT_SPLIT.length)
+      } else {
+        mainContent = content
+      }
+      Object.assign(taskForm, {
+        id: taskDoc.docId,
+        title: taskDoc.title || '',
+        subjectCategory: taskDoc.subjectCategory || '',
+        subjectType: taskDoc.subjectType || '',
+        subjectNewOld: taskDoc.subjectNewOld || '',
+        mainContent,
+        basicRequirement
+      })
+    } else {
+      Object.assign(taskForm, {
+        id: null,
+        title: '',
+        subjectCategory: '',
+        subjectType: '',
+        subjectNewOld: '',
+        mainContent: '',
+        basicRequirement: ''
+      })
+    }
+
+    if (guideDoc) {
+      Object.assign(guideForm, {
+        id: guideDoc.docId,
+        content: guideDoc.content || ''
+      })
+    } else {
+      Object.assign(guideForm, {
+        id: null,
+        content: ''
+      })
+    }
+  } catch (error) {
+    ElMessage.error(error.message || '获取文档失败')
+  } finally {
+    loading.value = false
+  }
 }
 
-function handleEdit(row) {
-  isEdit.value = true
-  dialogTitle.value = `编辑${row.docType || activeDocType.value}`
-  Object.assign(form, {
-    id: row.docId || null,
-    studentNo: row.studentNo,
-    studentName: row.studentName,
-    docType: row.docType || activeDocType.value,
-    title: row.title || '',
-    subjectCategory: row.subjectCategory || '',
-    subjectType: row.subjectType || '',
-    subjectNewOld: row.subjectNewOld || '',
-    content: row.content || '',
-    status: row.status || 1
-  })
-  dialogVisible.value = true
+async function handleSelectStudent(student) {
+  selectedStudent.value = student
+  await fetchDocs()
 }
 
-async function handleSubmit() {
-  const valid = await formRef.value.validate().catch(() => false)
-  if (!valid) return
+async function handleSaveTask() {
+  if (!selectedStudent.value) {
+    ElMessage.warning('请先选择学生')
+    return
+  }
+  if (!taskForm.title) {
+    ElMessage.warning('请输入题目')
+    return
+  }
+  if (!taskForm.mainContent) {
+    ElMessage.warning('请输入课题研究的主要内容')
+    return
+  }
+  if (!taskForm.basicRequirement) {
+    ElMessage.warning('请输入基本要求')
+    return
+  }
+
+  try {
+    const content = taskForm.mainContent + CONTENT_SPLIT + taskForm.basicRequirement
+    const data = {
+      studentNo: selectedStudent.value.studentNo,
+      docType: '任务书',
+      title: taskForm.title,
+      subjectCategory: taskForm.subjectCategory,
+      subjectType: taskForm.subjectType,
+      subjectNewOld: taskForm.subjectNewOld,
+      content: content,
+      status: 2
+    }
+
+    if (taskForm.id) {
+      await updateDocument(taskForm.id, data)
+    } else {
+      const res = await saveDocument(data)
+      taskForm.id = res
+    }
+    ElMessage.success('任务书保存成功')
+    fetchDocs()
+    await loadStudentDocStatus(selectedStudent.value.studentNo)
+  } catch (error) {
+    ElMessage.error(error.message || '保存失败')
+  }
+}
+
+async function handleSaveGuide() {
+  if (!selectedStudent.value) {
+    ElMessage.warning('请先选择学生')
+    return
+  }
+  if (!guideForm.content) {
+    ElMessage.warning('请输入指导书内容')
+    return
+  }
 
   try {
     const data = {
-      studentNo: form.studentNo,
-      docType: form.docType,
-      title: form.title,
-      subjectCategory: form.subjectCategory,
-      subjectType: form.subjectType,
-      subjectNewOld: form.subjectNewOld,
-      content: form.content,
-      status: form.status
+      studentNo: selectedStudent.value.studentNo,
+      docType: '指导书',
+      content: guideForm.content,
+      status: 2
     }
 
-    if (isEdit.value && form.id) {
-      await updateDocument(form.id, data)
-      ElMessage.success('修改成功')
+    if (guideForm.id) {
+      await updateDocument(guideForm.id, data)
     } else {
-      await saveDocument(data)
-      ElMessage.success('保存成功')
+      const res = await saveDocument(data)
+      guideForm.id = res
     }
-    dialogVisible.value = false
-    fetchData()
+    ElMessage.success('指导书保存成功')
+    fetchDocs()
+    await loadStudentDocStatus(selectedStudent.value.studentNo)
   } catch (error) {
-    ElMessage.error(error.message || '操作失败')
+    ElMessage.error(error.message || '保存失败')
   }
 }
 
-async function handleSubmitDoc(row) {
-  try {
-    await submitDocument(row.docId)
-    ElMessage.success('提交成功')
-    fetchData()
-  } catch (error) {
-    ElMessage.error(error.message || '提交失败')
-  }
-}
-
-function getStatusType(status) {
-  return status === 2 ? 'success' : 'info'
-}
-
-function getStatusLabel(status) {
-  const item = statusOptions.find(i => i.value === status)
-  return item ? item.label : '未知'
-}
-
-onMounted(fetchData)
+onMounted(fetchStudents)
 </script>
 
 <template>
   <div>
-    <el-page-header title="任务书/指导书" />
+    <el-page-header title="任务书/指导书填写" />
     <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <el-radio-group v-model="activeDocType" size="large" @change="handleDocTypeChange">
-            <el-radio-button v-for="type in docTypeOptions" :key="type" :label="type">{{ type }}</el-radio-button>
-          </el-radio-group>
-        </div>
-      </template>
+      <el-row :gutter="16">
+        <el-col :span="5" class="left-col">
+          <div class="student-list-header">
+            <el-input v-model="keyword" placeholder="搜索学号/姓名" clearable @input="filterStudents" />
+          </div>
+          <div v-loading="loading" class="student-list">
+            <div v-for="student in filteredStudents" :key="student.studentNo" class="student-item"
+              :class="{ active: selectedStudent?.studentNo === student.studentNo }"
+              @click="handleSelectStudent(student)">
+              <div class="student-item-header">
+                <div class="student-name">{{ student.studentName }}</div>
+                <el-tag :type="studentDocStatusMap[student.studentNo]?.type || 'info'" size="small" effect="light">
+                  {{ studentDocStatusMap[student.studentNo]?.status || '未提交' }}
+                </el-tag>
+              </div>
+              <div class="student-no">{{ student.studentNo }}</div>
+            </div>
+            <el-empty v-if="!filteredStudents.length" description="暂无学生" />
+          </div>
+        </el-col>
+        <el-col :span="19">
+          <div v-if="selectedStudent" v-loading="loading" class="detail-panel">
+            <div class="detail-header">
+              <h3>{{ selectedStudent.studentName }}（{{ selectedStudent.studentNo }}）</h3>
+              <div class="header-info" style="margin-top: 8px;">
+                <span>专业：{{ selectedStudent.major || '-' }}</span>
+                <span>班级：{{ selectedStudent.className || '-' }}</span>
+              </div>
+            </div>
 
-      <el-table v-loading="loading" :data="tableData" border>
-        <el-table-column prop="studentNo" label="学号" min-width="120" />
-        <el-table-column prop="studentName" label="姓名" min-width="100" />
-        <el-table-column prop="title" label="题目" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="statusDesc" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">{{ row.statusDesc || getStatusLabel(row.status) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" link @click="handleEdit(row)">{{ row.docId ? '编辑' : '填写' }}</el-button>
-            <el-button v-if="row.docId && row.status === 1" type="success" link @click="handleSubmitDoc(row)">提交</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+            <div class="form-section">
+              <h4>任务书</h4>
+              <el-form label-width="130px">
+                <el-form-item label="题目" required>
+                  <el-input v-model="taskForm.title" placeholder="请输入毕业设计（论文）题目" />
+                </el-form-item>
+                <el-form-item label="课题类别">
+                  <el-select v-model="taskForm.subjectCategory" placeholder="请选择课题类别" clearable style="width: 100%;">
+                    <el-option v-for="opt in categoryOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="课题类型">
+                  <el-select v-model="taskForm.subjectType" placeholder="请选择课题类型" clearable style="width: 100%;">
+                    <el-option v-for="opt in typeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="新旧课题">
+                  <el-select v-model="taskForm.subjectNewOld" placeholder="请选择新旧课题" clearable style="width: 100%;">
+                    <el-option v-for="opt in newOldOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="课题研究的主要内容" required>
+                  <el-input v-model="taskForm.mainContent" type="textarea" :rows="10"
+                    placeholder="请输入课题研究的主要内容，包括研究内容、拟解决的问题、预期成果等" />
+                </el-form-item>
+                <el-form-item label="基本要求" required>
+                  <el-input v-model="taskForm.basicRequirement" type="textarea" :rows="8"
+                    placeholder="请输入毕业设计（论文）的基本要求，包括对学生的能力要求、成果要求、进度要求等" />
+                </el-form-item>
+              </el-form>
+              <div class="form-actions">
+                <el-button type="primary" @click="handleSaveTask">保存任务书</el-button>
+              </div>
+            </div>
+
+            <div class="form-section" style="margin-top: 20px;">
+              <h4>指导书</h4>
+              <el-form label-width="100px">
+                <el-form-item label="指导书内容" required>
+                  <el-input v-model="guideForm.content" type="textarea" :rows="12" placeholder="请输入指导书内容" />
+                </el-form-item>
+              </el-form>
+              <div class="form-actions">
+                <el-button type="primary" @click="handleSaveGuide">保存指导书</el-button>
+              </div>
+            </div>
+          </div>
+          <div v-else class="empty-select">
+            <span>请选择左侧学生填写任务书/指导书</span>
+          </div>
+        </el-col>
+      </el-row>
     </el-card>
-
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="700px">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="学生">
-          <span>{{ form.studentNo }} - {{ form.studentName }}</span>
-        </el-form-item>
-        <el-form-item v-if="form.docType === '任务书'" label="题目" prop="title">
-          <el-input v-model="form.title" placeholder="请输入毕业设计题目" />
-        </el-form-item>
-        <el-form-item v-if="form.docType === '任务书'" label="课题类别">
-          <el-radio-group v-model="form.subjectCategory">
-            <el-radio v-for="c in categoryOptions" :key="c" :label="c">{{ c }}</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="form.docType === '任务书'" label="课题类型">
-          <el-radio-group v-model="form.subjectType">
-            <el-radio v-for="t in typeOptions" :key="t" :label="t">{{ t }}</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="form.docType === '任务书'" label="新旧课题">
-          <el-radio-group v-model="form.subjectNewOld">
-            <el-radio v-for="n in newOldOptions" :key="n" :label="n">{{ n }}</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="内容" prop="content">
-          <el-input v-model="form.content" type="textarea" :rows="8" placeholder="请输入内容" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-radio-group v-model="form.status">
-            <el-radio :label="1">草稿</el-radio>
-            <el-radio :label="2">已提交</el-radio>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">保存</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -200,9 +349,115 @@ onMounted(fetchData)
   margin-top: 16px;
 }
 
-.card-header {
+.student-list-header {
+  margin-bottom: 12px;
+}
+
+.left-col {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 220px);
+}
+
+.student-list {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+}
+
+.student-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #ebeef5;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.student-item:hover {
+  background-color: #f5f7fa;
+}
+
+.student-item.active {
+  background-color: #ecf5ff;
+  border-left: 3px solid #409eff;
+}
+
+.student-item-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.student-name {
+  font-weight: 500;
+  color: #303133;
+}
+
+.student-no {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.detail-panel {
+  height: calc(100vh - 220px);
+  overflow-y: auto;
+  padding-right: 20px;
+}
+
+.detail-header {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e4e7ed;
+  padding-left: 12px;
+}
+
+.detail-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #303133;
+  font-weight: 600;
+}
+
+.header-info {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  color: #606266;
+  font-size: 14px;
+  margin-top: 6px;
+}
+
+.form-section {
+  padding: 20px;
+  background-color: #fff;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+}
+
+.form-section h4 {
+  margin: 0 0 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #409eff;
+  color: #303133;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.form-actions {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e4e7ed;
+}
+
+.empty-select {
+  height: calc(100vh - 220px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  font-size: 14px;
+  background-color: #fafafa;
+  border-radius: 4px;
 }
 </style>
