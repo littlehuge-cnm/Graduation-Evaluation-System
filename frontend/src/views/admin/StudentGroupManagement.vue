@@ -12,6 +12,7 @@ import { getStudentList } from '@/api/student.js'
 const loading = ref(false)
 const tableData = ref([])
 const allStudents = ref([])
+const keyword = ref('')
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -70,6 +71,25 @@ async function fetchStudents() {
 const groupMap = computed(() => {
   return Object.fromEntries(tableData.value.map(g => [g.groupId, g.groupName]))
 })
+
+const filteredGroups = computed(() => {
+  const k = keyword.value.trim().toLowerCase()
+  if (!k) return tableData.value
+  return tableData.value.filter(g => {
+    if (g.groupName?.toLowerCase().includes(k)) return true
+    if (g.students && g.students.length > 0) {
+      return g.students.some(s =>
+        s.studentNo?.toLowerCase().includes(k) ||
+        s.studentName?.toLowerCase().includes(k)
+      )
+    }
+    return false
+  })
+})
+
+function handleSearch() {
+  keyword.value = keyword.value.trim()
+}
 
 const selectedSet = computed(() => new Set(form.studentNos))
 
@@ -232,12 +252,16 @@ onMounted(() => {
     <el-card class="table-card">
       <template #header>
         <div class="card-header">
-          <span>学生分组列表</span>
+          <div class="search-bar">
+            <el-input v-model="keyword" placeholder="搜索组名/学号/姓名" clearable style="width: 260px;"
+              @keyup.enter="handleSearch" />
+            <el-button type="primary" @click="handleSearch">搜索</el-button>
+          </div>
           <el-button type="primary" @click="openAddDialog">新增学生分组</el-button>
         </div>
       </template>
 
-      <el-table v-loading="loading" :data="tableData" border>
+      <el-table v-loading="loading" :data="filteredGroups" border>
         <el-table-column prop="groupId" label="组号" width="80" />
         <el-table-column prop="groupName" label="组名" min-width="80" />
         <el-table-column prop="studentCount" label="学生数" width="100" />
@@ -324,6 +348,13 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.search-bar {
+  display: flex;
+  gap: 8px;
 }
 
 .student-tags {

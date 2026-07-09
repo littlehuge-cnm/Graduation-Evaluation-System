@@ -23,3 +23,7 @@ export function deleteGroupMapping(id) {
 export function batchAssignGroupMapping(list) {
   return request.post('/group-mappings/batch-assign', list)
 }
+
+export function randomAssignGroupMapping(studentGroupIds) {
+  return request.post('/group-mappings/random-assign', studentGroupIds || [])
+}

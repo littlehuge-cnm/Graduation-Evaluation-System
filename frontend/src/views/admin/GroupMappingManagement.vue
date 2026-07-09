@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { batchAssignGroupMapping, getGroupMappingList } from '@/api/groupMapping.js'
+import { batchAssignGroupMapping, getGroupMappingList, randomAssignGroupMapping } from '@/api/groupMapping.js'
 import { getTeacherGroupList } from '@/api/teacherGroup.js'
 import { getStudentGroupList } from '@/api/studentGroup.js'
 
@@ -48,9 +48,18 @@ const tableData = computed(() => {
       defenseTeacherGroupName: defense?.teacherGroupName || '未分配'
     }
   })
-  const k = keyword.value.trim()
+  const k = keyword.value.trim().toLowerCase()
   if (!k) return list
-  return list.filter(g => g.groupName?.includes(k))
+  return list.filter(g => {
+    if (g.groupName?.toLowerCase().includes(k)) return true
+    if (g.students && g.students.length > 0) {
+      return g.students.some(s =>
+        s.studentNo?.toLowerCase().includes(k) ||
+        s.studentName?.toLowerCase().includes(k)
+      )
+    }
+    return false
+  })
 })
 
 async function fetchData() {
@@ -185,6 +194,30 @@ async function handleDelete(row) {
   }
 }
 
+async function handleRandomAssign() {
+  const isAll = selectedGroups.value.length === 0
+  const groupNames = selectedGroups.value.map(g => g.groupName).join('、')
+  const confirmMsg = isAll
+    ? '确定要为所有学生组随机分配三个环节的教师组吗？\n这将覆盖现有的分配关系，且：\n1. 同一环节教师组与学生组一一对应\n2. 同一学生组三个环节教师组互不相同'
+    : `确定要为选中的 ${selectedGroups.value.length} 个学生组（${groupNames}）随机分配三个环节的教师组吗？\n这将覆盖这些组的现有分配，且：\n1. 同一环节教师组与学生组一一对应（不与其他未选中组冲突）\n2. 同一学生组三个环节教师组互不相同`
+  try {
+    await ElMessageBox.confirm(
+      confirmMsg,
+      '随机分配确认',
+      { confirmButtonText: '确定分配', cancelButtonText: '取消', type: 'warning' }
+    )
+    const ids = isAll ? [] : selectedGroups.value.map(g => g.groupId)
+    await randomAssignGroupMapping(ids)
+    ElMessage.success('随机分配成功')
+    selectedGroups.value = []
+    await fetchMappings()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '随机分配失败')
+    }
+  }
+}
+
 function handleSelectionChange(rows) {
   selectedGroups.value = rows
 }
@@ -199,18 +232,40 @@ onMounted(fetchData)
       <template #header>
         <div class="card-header">
           <div class="search-bar">
-            <el-input v-model="keyword" placeholder="搜索学生组" clearable style="width: 220px;" />
+            <el-input v-model="keyword" placeholder="搜索学生组/学号/姓名" clearable style="width: 260px;"
+              @keyup.enter="handleSearch" />
             <el-button type="primary" @click="handleSearch">搜索</el-button>
           </div>
-          <el-button type="primary" :disabled="selectedGroups.length === 0" @click="handleBatchAssign">
-            批量分配
-          </el-button>
+          <div class="action-buttons">
+            <el-button type="success" @click="handleRandomAssign">随机分配</el-button>
+            <el-button type="primary" :disabled="selectedGroups.length === 0" @click="handleBatchAssign">
+              批量分配
+            </el-button>
+          </div>
         </div>
       </template>
 
       <el-table v-loading="loading" :data="tableData" border @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" />
-        <el-table-column prop="groupName" label="学生组" min-width="160" />
+        <el-table-column label="学生组" min-width="240">
+          <template #default="{ row }">
+            <div class="group-cell">
+              <div class="group-name">{{ row.groupName }}</div>
+              <div v-if="row.students && row.students.length > 0" class="group-members">
+                <template v-if="row.students.length <= 3">
+                  <span v-for="(s, i) in row.students" :key="s.studentNo" class="member-tag">
+                    {{ s.studentName }}{{ i < row.students.length - 1 ? '、' : '' }} </span>
+                </template>
+                <template v-else>
+                  <span v-for="(s, i) in row.students.slice(0, 3)" :key="s.studentNo" class="member-tag">
+                    {{ s.studentName }}{{ i < 2 ? '、' : '' }} </span>
+                      <span class="member-tag more">等{{ row.students.length }}人</span>
+                </template>
+              </div>
+              <div v-else class="group-members empty">暂无组员</div>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column label="开题教师组" min-width="180">
           <template #default="{ row }">
             <span>{{ row.openingTeacherGroupName }}</span>
@@ -284,5 +339,38 @@ onMounted(fetchData)
 .search-bar {
   display: flex;
   gap: 8px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.group-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.group-name {
+  font-weight: 500;
+  color: #303133;
+}
+
+.group-members {
+  font-size: 12px;
+  color: #909399;
+}
+
+.group-members .member-tag {
+  margin-right: 2px;
+}
+
+.group-members .member-tag.more {
+  color: #409eff;
+}
+
+.group-members.empty {
+  color: #c0c4cc;
 }
 </style>

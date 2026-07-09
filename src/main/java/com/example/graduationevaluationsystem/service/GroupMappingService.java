@@ -60,6 +60,19 @@ public interface GroupMappingService extends IService<GroupMapping> {
     List<GroupMappingVO> randomAssignAll();
 
     /**
+     * 为指定学生组随机分配教师组
+     * <p>
+     * 仅为传入的学生组列表随机分配三个环节的教师组，不影响其他学生组的已有分配：
+     * - 同一环节中，不同学生组分配不同教师组（一对一，包括与已有分配不冲突）
+     * - 同一学生组在三个环节中分配的教师组互不相同
+     * - 覆盖传入学生组的原有分配
+     *
+     * @param studentGroupIds 指定的学生组ID列表
+     * @return 分配结果列表（含教师组名、学生组名）
+     */
+    List<GroupMappingVO> randomAssignForGroups(List<Integer> studentGroupIds);
+
+    /**
      * 批量分配学生组在三个环节上的教师组
      *
      * @param list 分配列表

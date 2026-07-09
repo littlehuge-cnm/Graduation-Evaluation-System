@@ -259,7 +259,7 @@ onMounted(() => {
           <el-input v-model="form.grade" placeholder="请输入年级" />
         </el-form-item>
         <el-form-item label="学生组">
-          <el-select v-model="form.studentGroupId" placeholder="请选择学生组" clearable style="width: 100%;">
+          <el-select v-model="form.studentGroupId" placeholder="请选择学生组" clearable filterable style="width: 100%;">
             <el-option v-for="group in groupOptions" :key="group.groupId" :label="group.groupName"
               :value="group.groupId" />
           </el-select>

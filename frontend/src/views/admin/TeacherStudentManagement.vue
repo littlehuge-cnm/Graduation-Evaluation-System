@@ -1,6 +1,6 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTeacherStudentList, batchAssignTeacherStudent } from '@/api/teacherStudent.js'
 import { getTeacherList } from '@/api/teacher.js'
 import { getStudentList } from '@/api/student.js'
@@ -28,7 +28,7 @@ const rules = {
 }
 
 const tableData = computed(() => {
-  const k = keyword.value.trim()
+  const k = keyword.value.trim().toLowerCase()
   const list = students.value.map(s => {
     const guide = relations.value.find(r => r.studentNo === s.studentNo && r.relationType === '指导' && r.relationStatus === 1)
     const review = relations.value.find(r => r.studentNo === s.studentNo && r.relationType === '评阅' && r.relationStatus === 1)
@@ -41,7 +41,12 @@ const tableData = computed(() => {
     }
   })
   if (!k) return list
-  return list.filter(s => s.studentNo?.includes(k) || s.studentName?.includes(k))
+  return list.filter(s =>
+    s.studentNo?.toLowerCase().includes(k) ||
+    s.studentName?.toLowerCase().includes(k) ||
+    s.className?.toLowerCase().includes(k) ||
+    s.major?.toLowerCase().includes(k)
+  )
 })
 
 async function fetchData() {
@@ -62,6 +67,10 @@ async function fetchData() {
   }
 }
 
+function handleSearch() {
+  keyword.value = keyword.value.trim()
+}
+
 function handleEdit(row) {
   currentStudent.value = row
   dialogMode.value = 'single'
@@ -73,46 +82,63 @@ function handleEdit(row) {
 
 function handleBatchAssign() {
   if (selectedStudents.value.length === 0) {
-    ElMessage.warning('请至少选择一名学生')
+    ElMessage.warning('请至少选择一个学生')
     return
   }
   currentStudent.value = null
   dialogMode.value = 'batch'
-  dialogTitle.value = `批量分配教师（已选 ${selectedStudents.value.length} 人）`
+  dialogTitle.value = `批量分配教师（已选 ${selectedStudents.value.length} 个学生）`
   form.guideTeacherNo = ''
   form.reviewTeacherNo = ''
   dialogVisible.value = true
 }
 
-function validateAssignList(list) {
-  const conflicts = []
-  for (const item of list) {
-    if (item.guideTeacherNo && item.reviewTeacherNo && item.guideTeacherNo === item.reviewTeacherNo) {
-      const s = students.value.find(st => st.studentNo === item.studentNo)
-      conflicts.push(s ? `${s.studentName}（${item.studentNo}）` : item.studentNo)
+async function handleClear(row) {
+  try {
+    await ElMessageBox.confirm(`确定清空学生 ${row.studentName}（${row.studentNo}）的指导教师和评阅教师吗？`, '提示', { type: 'warning' })
+    const list = [{
+      studentNo: row.studentNo,
+      guideTeacherNo: null,
+      reviewTeacherNo: null
+    }]
+    await batchAssignTeacherStudent(list)
+    ElMessage.success('清空成功')
+    await fetchData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '清空失败')
     }
   }
-  if (conflicts.length > 0) {
-    ElMessage.error(`以下学生的指导教师与评阅教师相同，请修改：${conflicts.join('、')}`)
-    return false
-  }
-  return true
 }
 
 function buildSingleList() {
   return [{
     studentNo: currentStudent.value.studentNo,
-    guideTeacherNo: form.guideTeacherNo,
-    reviewTeacherNo: form.reviewTeacherNo
+    guideTeacherNo: form.guideTeacherNo || null,
+    reviewTeacherNo: form.reviewTeacherNo || null
   }]
 }
 
 function buildBatchList() {
   return selectedStudents.value.map(s => ({
     studentNo: s.studentNo,
-    guideTeacherNo: form.guideTeacherNo || s.guideTeacherNo,
-    reviewTeacherNo: form.reviewTeacherNo || s.reviewTeacherNo
+    guideTeacherNo: form.guideTeacherNo || null,
+    reviewTeacherNo: form.reviewTeacherNo || null
   }))
+}
+
+function validateAssignList(list) {
+  for (const item of list) {
+    const guide = item.guideTeacherNo
+    const review = item.reviewTeacherNo
+    if (guide && review && guide === review) {
+      const student = students.value.find(s => s.studentNo === item.studentNo)
+      const name = student ? student.studentName : item.studentNo
+      ElMessage.error(`学生 ${name}（${item.studentNo}）的指导教师与评阅教师不能相同`)
+      return false
+    }
+  }
+  return true
 }
 
 async function handleSubmit() {
@@ -127,7 +153,7 @@ async function handleSubmit() {
     ElMessage.success('分配成功')
     dialogVisible.value = false
     selectedStudents.value = []
-    fetchData()
+    await fetchData()
   } catch (error) {
     ElMessage.error(error.message || '分配失败')
   }
@@ -146,7 +172,11 @@ onMounted(fetchData)
     <el-card class="table-card">
       <template #header>
         <div class="card-header">
-          <el-input v-model="keyword" placeholder="搜索学号/姓名" clearable style="width: 220px;" />
+          <div class="search-bar">
+            <el-input v-model="keyword" placeholder="搜索学号/姓名/班级/专业" clearable style="width: 260px;"
+              @keyup.enter="handleSearch" />
+            <el-button type="primary" @click="handleSearch">搜索</el-button>
+          </div>
           <el-button type="primary" :disabled="selectedStudents.length === 0" @click="handleBatchAssign">
             批量分配
           </el-button>
@@ -169,11 +199,10 @@ onMounted(fetchData)
             <span v-if="row.reviewTeacherNo" class="teacher-no">（{{ row.reviewTeacherNo }}）</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleEdit(row)">
-              编辑
-            </el-button>
+            <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
+            <el-button type="danger" link @click="handleClear(row)">清空</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -214,6 +243,11 @@ onMounted(fetchData)
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.search-bar {
+  display: flex;
+  gap: 8px;
 }
 
 .teacher-no {

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTeacherGroupList, addTeacherGroup, updateTeacherGroup, deleteTeacherGroup } from '@/api/teacherGroup.js'
 import { getTeacherList } from '@/api/teacher.js'
@@ -7,6 +7,7 @@ import { getTeacherList } from '@/api/teacher.js'
 const loading = ref(false)
 const tableData = ref([])
 const teacherOptions = ref([])
+const keyword = ref('')
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -28,6 +29,17 @@ const rules = {
   memberNo: [{ required: true, message: '请选择普通成员', trigger: 'change' }]
 }
 
+const filteredData = computed(() => {
+  const k = keyword.value.trim().toLowerCase()
+  if (!k) return tableData.value
+  return tableData.value.filter(item =>
+    item.groupName?.toLowerCase().includes(k) ||
+    item.leaderName?.toLowerCase().includes(k) ||
+    item.secretaryName?.toLowerCase().includes(k) ||
+    item.memberName?.toLowerCase().includes(k)
+  )
+})
+
 async function fetchData() {
   loading.value = true
   try {
@@ -45,6 +57,10 @@ async function fetchTeachers() {
   } catch (error) {
     console.error(error)
   }
+}
+
+function handleSearch() {
+  keyword.value = keyword.value.trim()
 }
 
 function handleAdd() {
@@ -127,12 +143,16 @@ onMounted(() => {
     <el-card class="table-card">
       <template #header>
         <div class="card-header">
-          <span>教师分组列表</span>
+          <div class="search-bar">
+            <el-input v-model="keyword" placeholder="搜索组名/组长/秘书/成员" clearable style="width: 260px;"
+              @keyup.enter="handleSearch" />
+            <el-button type="primary" @click="handleSearch">搜索</el-button>
+          </div>
           <el-button type="primary" @click="handleAdd">新增教师分组</el-button>
         </div>
       </template>
 
-      <el-table v-loading="loading" :data="tableData" border>
+      <el-table v-loading="loading" :data="filteredData" border>
         <el-table-column prop="groupId" label="组号" width="80" />
         <el-table-column prop="groupName" label="组名" min-width="140" />
         <el-table-column prop="leaderName" label="组长" min-width="120" />
@@ -153,19 +173,19 @@ onMounted(() => {
           <el-input v-model="form.groupName" placeholder="请输入组名" />
         </el-form-item>
         <el-form-item label="组长" prop="leaderNo">
-          <el-select v-model="form.leaderNo" placeholder="请选择组长" style="width: 100%;">
+          <el-select v-model="form.leaderNo" placeholder="请选择组长" filterable style="width: 100%;">
             <el-option v-for="teacher in teacherOptions" :key="teacher.teacherNo"
               :label="`${teacher.teacherNo} - ${teacher.teacherName}`" :value="teacher.teacherNo" />
           </el-select>
         </el-form-item>
         <el-form-item label="秘书" prop="secretaryNo">
-          <el-select v-model="form.secretaryNo" placeholder="请选择秘书" style="width: 100%;">
+          <el-select v-model="form.secretaryNo" placeholder="请选择秘书" filterable style="width: 100%;">
             <el-option v-for="teacher in teacherOptions" :key="teacher.teacherNo"
               :label="`${teacher.teacherNo} - ${teacher.teacherName}`" :value="teacher.teacherNo" />
           </el-select>
         </el-form-item>
         <el-form-item label="普通成员" prop="memberNo">
-          <el-select v-model="form.memberNo" placeholder="请选择普通成员" style="width: 100%;">
+          <el-select v-model="form.memberNo" placeholder="请选择普通成员" filterable style="width: 100%;">
             <el-option v-for="teacher in teacherOptions" :key="teacher.teacherNo"
               :label="`${teacher.teacherNo} - ${teacher.teacherName}`" :value="teacher.teacherNo" />
           </el-select>
@@ -188,5 +208,12 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.search-bar {
+  display: flex;
+  gap: 8px;
 }
 </style>

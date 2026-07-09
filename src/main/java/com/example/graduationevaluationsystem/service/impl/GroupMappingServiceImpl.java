@@ -122,6 +122,145 @@ public class GroupMappingServiceImpl extends ServiceImpl<GroupMappingMapper, Gro
         return baseMapper.selectMappingList(null);
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public List<GroupMappingVO> randomAssignForGroups(List<Integer> studentGroupIds) {
+        if (studentGroupIds == null || studentGroupIds.isEmpty()) {
+            throw new BusinessException("请至少选择一个学生组");
+        }
+
+        // 1. 查询全部教师组
+        List<TeacherGroup> teacherGroups = teacherGroupMapper.selectList(null);
+        List<Integer> teacherGroupIds = teacherGroups.stream()
+                .map(TeacherGroup::getGroupId)
+                .toList();
+        int teacherCount = teacherGroupIds.size();
+
+        // 2. 校验学生组存在
+        List<StudentGroup> targetStudentGroups = new ArrayList<>();
+        for (Integer sgId : studentGroupIds) {
+            StudentGroup sg = studentGroupMapper.selectById(sgId);
+            if (sg == null) {
+                throw new BusinessException("学生分组不存在：" + sgId);
+            }
+            targetStudentGroups.add(sg);
+        }
+        int targetCount = targetStudentGroups.size();
+
+        if (teacherCount < 3) {
+            throw new BusinessException("教师组数量不足，至少需要 3 个教师组，当前：" + teacherCount);
+        }
+
+        // 3. 查询所有已有映射，获取各环节已被占用的教师组（不包括目标学生组自身）
+        List<GroupMapping> allMappings = list();
+        Set<Integer>[] usedInStageExisting = new Set[3];
+        for (int s = 0; s < 3; s++) {
+            usedInStageExisting[s] = new HashSet<>();
+        }
+        String[] stages = { "开题", "中期", "答辩" };
+        for (GroupMapping m : allMappings) {
+            if (studentGroupIds.contains(m.getStudentGroupId())) {
+                continue;
+            }
+            for (int s = 0; s < 3; s++) {
+                if (stages[s].equals(m.getStage())) {
+                    usedInStageExisting[s].add(m.getTeacherGroupId());
+                    break;
+                }
+            }
+        }
+
+        // 4. 计算可用教师组数量是否足够
+        int availableCount = teacherCount - usedInStageExisting[0].size();
+        if (availableCount < targetCount) {
+            throw new BusinessException("可用教师组数量不足，需要 " + targetCount + " 个，当前可用：" + availableCount);
+        }
+
+        // 5. 执行随机分配（考虑已有占用）
+        Integer[][] assignment = doRandomAssignWithExisting(teacherGroupIds, studentGroupIds, usedInStageExisting);
+
+        // 6. 删除目标学生组的原有映射
+        LambdaQueryWrapper<GroupMapping> deleteWrapper = new LambdaQueryWrapper<>();
+        deleteWrapper.in(GroupMapping::getStudentGroupId, studentGroupIds);
+        remove(deleteWrapper);
+
+        // 7. 批量插入新映射
+        List<GroupMapping> mappings = new ArrayList<>();
+        for (int studentIdx = 0; studentIdx < targetCount; studentIdx++) {
+            for (int stageIdx = 0; stageIdx < 3; stageIdx++) {
+                GroupMapping mapping = new GroupMapping();
+                mapping.setStage(stages[stageIdx]);
+                mapping.setTeacherGroupId(assignment[studentIdx][stageIdx]);
+                mapping.setStudentGroupId(studentGroupIds.get(studentIdx));
+                mappings.add(mapping);
+            }
+        }
+        saveBatch(mappings);
+
+        return baseMapper.selectMappingList(null);
+    }
+
+    /**
+     * 考虑已有分配的随机分配算法
+     */
+    private Integer[][] doRandomAssignWithExisting(List<Integer> teacherGroupIds, List<Integer> studentGroupIds,
+                                                    Set<Integer>[] usedInStageExisting) {
+        final int MAX_RETRIES = 1000;
+        int teacherCount = teacherGroupIds.size();
+        int studentCount = studentGroupIds.size();
+
+        for (int retry = 0; retry < MAX_RETRIES; retry++) {
+            Integer[][] assignment = new Integer[studentCount][3];
+            Set<Integer>[] usedInStage = new Set[3];
+            Set<Integer>[] assignedToStudent = new Set[studentCount];
+
+            for (int s = 0; s < 3; s++) {
+                usedInStage[s] = new HashSet<>(usedInStageExisting[s]);
+            }
+            for (int i = 0; i < studentCount; i++) {
+                assignedToStudent[i] = new HashSet<>();
+            }
+
+            boolean success = true;
+
+            for (int stageIdx = 0; stageIdx < 3 && success; stageIdx++) {
+                List<Integer> studentOrder = new ArrayList<>();
+                for (int i = 0; i < studentCount; i++) {
+                    studentOrder.add(i);
+                }
+                Collections.shuffle(studentOrder, ThreadLocalRandom.current());
+
+                for (int studentIdx : studentOrder) {
+                    List<Integer> candidates = new ArrayList<>();
+                    for (int teacherIdx = 0; teacherIdx < teacherCount; teacherIdx++) {
+                        Integer teacherGroupId = teacherGroupIds.get(teacherIdx);
+                        if (!usedInStage[stageIdx].contains(teacherGroupId)
+                                && !assignedToStudent[studentIdx].contains(teacherGroupId)) {
+                            candidates.add(teacherGroupId);
+                        }
+                    }
+
+                    if (candidates.isEmpty()) {
+                        success = false;
+                        break;
+                    }
+
+                    Integer chosen = candidates.get(
+                            ThreadLocalRandom.current().nextInt(candidates.size()));
+                    assignment[studentIdx][stageIdx] = chosen;
+                    usedInStage[stageIdx].add(chosen);
+                    assignedToStudent[studentIdx].add(chosen);
+                }
+            }
+
+            if (success) {
+                return assignment;
+            }
+        }
+
+        throw new BusinessException("随机分配失败，已尝试 " + MAX_RETRIES + " 次仍未找到合法方案，请重试");
+    }
+
     /**
      * 随机分配算法（贪心 + 随机重试）
      * <p>

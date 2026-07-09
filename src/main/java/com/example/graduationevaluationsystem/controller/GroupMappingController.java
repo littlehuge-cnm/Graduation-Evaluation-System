@@ -56,9 +56,13 @@ public class GroupMappingController {
 
     @PostMapping("/random-assign")
     @Operation(summary = "随机分配教师组给学生组", description = "一次性为三个环节（开题/中期/答辩）随机分配教师组给学生组，" +
-            "同一环节一对一，同一学生组三环节教师组互不相同，覆盖原有分配")
-    public Result<List<GroupMappingVO>> randomAssign() {
-        return Result.success(groupMappingService.randomAssignAll());
+            "同一环节一对一，同一学生组三环节教师组互不相同，覆盖原有分配。" +
+            "如果传入studentGroupIds则仅分配指定学生组，否则分配全部学生组")
+    public Result<List<GroupMappingVO>> randomAssign(@RequestBody(required = false) List<Integer> studentGroupIds) {
+        if (studentGroupIds == null || studentGroupIds.isEmpty()) {
+            return Result.success(groupMappingService.randomAssignAll());
+        }
+        return Result.success(groupMappingService.randomAssignForGroups(studentGroupIds));
     }
 
     @PostMapping("/batch-assign")

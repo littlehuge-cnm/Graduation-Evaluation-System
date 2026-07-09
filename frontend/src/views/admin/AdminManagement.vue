@@ -1,10 +1,11 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAdminList, addAdmin, updateAdmin, deleteAdmin } from '@/api/admin.js'
 
 const loading = ref(false)
 const tableData = ref([])
+const keyword = ref('')
 const pagination = reactive({
   pageNum: 1,
   pageSize: 10,
@@ -28,6 +29,15 @@ const rules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
+const filteredData = computed(() => {
+  const k = keyword.value.trim().toLowerCase()
+  if (!k) return tableData.value
+  return tableData.value.filter(item =>
+    item.adminId?.toLowerCase().includes(k) ||
+    item.adminName?.toLowerCase().includes(k)
+  )
+})
+
 async function fetchData() {
   loading.value = true
   try {
@@ -40,6 +50,10 @@ async function fetchData() {
   } finally {
     loading.value = false
   }
+}
+
+function handleSearch() {
+  keyword.value = keyword.value.trim()
 }
 
 function handleAdd() {
@@ -128,12 +142,16 @@ onMounted(fetchData)
     <el-card class="table-card">
       <template #header>
         <div class="card-header">
-          <span>管理员列表</span>
+          <div class="search-bar">
+            <el-input v-model="keyword" placeholder="搜索账号/姓名" clearable style="width: 220px;"
+              @keyup.enter="handleSearch" />
+            <el-button type="primary" @click="handleSearch">搜索</el-button>
+          </div>
           <el-button type="primary" @click="handleAdd">新增管理员</el-button>
         </div>
       </template>
 
-      <el-table v-loading="loading" :data="tableData" border>
+      <el-table v-loading="loading" :data="filteredData" border>
         <el-table-column prop="adminId" label="管理员账号" min-width="140" />
         <el-table-column prop="adminName" label="姓名" min-width="120" />
         <el-table-column label="操作" width="180" fixed="right">
@@ -178,6 +196,13 @@ onMounted(fetchData)
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.search-bar {
+  display: flex;
+  gap: 8px;
 }
 
 .pagination {

@@ -27,3 +27,13 @@ export function importStudents(file) {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
 }
+
+export function getStudentTeachers(studentNo) {
+  return request.get(`/students/${studentNo}/teachers`)
+}
+
+export function getStudentDocuments(studentNo, docType) {
+  return request.get(`/students/${studentNo}/documents`, {
+    params: { docType }
+  })
+}
