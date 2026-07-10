@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, UserFilled, OfficeBuilding, Collection, Reading, EditPen, Check, WarningFilled, DataAnalysis, DocumentCopy } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user.js'
@@ -8,7 +8,6 @@ import { getTeacherList } from '@/api/teacher.js'
 import { getStudentGroupList } from '@/api/studentGroup.js'
 import { getTeacherGroupList } from '@/api/teacherGroup.js'
 import { getScoreRecordList } from '@/api/scoreRecord.js'
-import { getGroupMappingList } from '@/api/groupMapping.js'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -21,12 +20,6 @@ const stats = reactive({
   teacherGroupTotal: 0,
   pendingReview: 0,
   completedReview: 0
-})
-
-const stageProgress = reactive({
-  开题: { notStarted: 0, inProgress: 0, completed: 0 },
-  中期: { notStarted: 0, inProgress: 0, completed: 0 },
-  答辩: { notStarted: 0, inProgress: 0, completed: 0 }
 })
 
 const quickLinks = [
@@ -62,23 +55,31 @@ async function loadStats() {
       let pendingCount = 0
       let completedCount = 0
 
-      for (const student of studentList) {
-        try {
-          const recordList = await getScoreRecordList(student.studentNo)
-          const hasAllScores = ['开题成绩', '外文翻译', '中期检查', '指导评语', '评阅评语', '答辩成绩'].every(key => {
-            const r = recordList.find(r => r.itemType === key)
-            return r && r.score !== null && r.score !== undefined
-          })
-          const hasCommittee = recordList.some(r => r.itemType === '委员会评定' && r.score !== null)
+      const CONCURRENT_LIMIT = 20
+      const studentNos = studentList.map(s => s.studentNo)
 
-          if (hasCommittee) {
-            completedCount++
-          } else if (hasAllScores) {
-            pendingCount++
+      for (let i = 0; i < studentNos.length; i += CONCURRENT_LIMIT) {
+        const batch = studentNos.slice(i, i + CONCURRENT_LIMIT)
+        const batchResults = await Promise.allSettled(
+          batch.map(no => getScoreRecordList(no))
+        )
+
+        batchResults.forEach(result => {
+          if (result.status === 'fulfilled') {
+            const recordList = result.value || []
+            const hasAllScores = ['开题报告成绩', '外文翻译', '中期检查成绩', '指导评语', '评阅评语', '毕业答辩成绩'].every(key => {
+              const r = recordList.find(r => r.itemType === key)
+              return r && r.score !== null && r.score !== undefined
+            })
+            const hasCommittee = recordList.some(r => r.itemType === '委员会评定' && r.score !== null)
+
+            if (hasCommittee) {
+              completedCount++
+            } else if (hasAllScores) {
+              pendingCount++
+            }
           }
-        } catch (e) {
-          // ignore
-        }
+        })
       }
 
       stats.pendingReview = pendingCount
@@ -115,7 +116,9 @@ onMounted(() => {
       <el-col :xs="12" :sm="8" :md="4">
         <el-card shadow="hover" class="stat-card" @click="goTo('/admin/students')">
           <div class="stat-icon" style="background: #ecf5ff; color: #409eff;">
-            <el-icon size="28"><User /></el-icon>
+            <el-icon size="28">
+              <User />
+            </el-icon>
           </div>
           <div class="stat-content">
             <div class="stat-value">{{ stats.studentTotal }}</div>
@@ -126,7 +129,9 @@ onMounted(() => {
       <el-col :xs="12" :sm="8" :md="4">
         <el-card shadow="hover" class="stat-card" @click="goTo('/admin/teachers')">
           <div class="stat-icon" style="background: #f0f9ff; color: #67c23a;">
-            <el-icon size="28"><UserFilled /></el-icon>
+            <el-icon size="28">
+              <UserFilled />
+            </el-icon>
           </div>
           <div class="stat-content">
             <div class="stat-value">{{ stats.teacherTotal }}</div>
@@ -137,7 +142,9 @@ onMounted(() => {
       <el-col :xs="12" :sm="8" :md="4">
         <el-card shadow="hover" class="stat-card" @click="goTo('/admin/student-groups')">
           <div class="stat-icon" style="background: #fdf6ec; color: #e6a23c;">
-            <el-icon size="28"><OfficeBuilding /></el-icon>
+            <el-icon size="28">
+              <OfficeBuilding />
+            </el-icon>
           </div>
           <div class="stat-content">
             <div class="stat-value">{{ stats.studentGroupTotal }}</div>
@@ -148,7 +155,9 @@ onMounted(() => {
       <el-col :xs="12" :sm="8" :md="4">
         <el-card shadow="hover" class="stat-card" @click="goTo('/admin/teacher-groups')">
           <div class="stat-icon" style="background: #fef0f0; color: #f56c6c;">
-            <el-icon size="28"><Collection /></el-icon>
+            <el-icon size="28">
+              <Collection />
+            </el-icon>
           </div>
           <div class="stat-content">
             <div class="stat-value">{{ stats.teacherGroupTotal }}</div>
@@ -159,7 +168,9 @@ onMounted(() => {
       <el-col :xs="12" :sm="8" :md="4">
         <el-card shadow="hover" class="stat-card" @click="goTo('/admin/committee-evaluation')">
           <div class="stat-icon" style="background: #fff7e6; color: #ff7a45;">
-            <el-icon size="28"><WarningFilled /></el-icon>
+            <el-icon size="28">
+              <WarningFilled />
+            </el-icon>
           </div>
           <div class="stat-content">
             <div class="stat-value pending">{{ stats.pendingReview }}</div>
@@ -170,7 +181,9 @@ onMounted(() => {
       <el-col :xs="12" :sm="8" :md="4">
         <el-card shadow="hover" class="stat-card" @click="goTo('/admin/committee-evaluation')">
           <div class="stat-icon" style="background: #e6fffb; color: #36cfc9;">
-            <el-icon size="28"><Check /></el-icon>
+            <el-icon size="28">
+              <Check />
+            </el-icon>
           </div>
           <div class="stat-content">
             <div class="stat-value completed">{{ stats.completedReview }}</div>
@@ -185,13 +198,17 @@ onMounted(() => {
         <el-card class="section-card">
           <template #header>
             <div class="card-header">
-              <span><el-icon style="margin-right: 8px;"><DataAnalysis /></el-icon> 快捷入口</span>
+              <span><el-icon style="margin-right: 8px;">
+                  <DataAnalysis />
+                </el-icon> 快捷入口</span>
             </div>
           </template>
           <div class="quick-links">
             <div v-for="link in quickLinks" :key="link.path" class="quick-link-item" @click="goTo(link.path)">
               <div class="link-icon" :style="{ background: link.color + '15', color: link.color }">
-                <el-icon size="22"><component :is="link.icon" /></el-icon>
+                <el-icon size="22">
+                  <component :is="link.icon" />
+                </el-icon>
               </div>
               <div class="link-name">{{ link.name }}</div>
             </div>
@@ -202,7 +219,9 @@ onMounted(() => {
         <el-card class="section-card">
           <template #header>
             <div class="card-header">
-              <span><el-icon style="margin-right: 8px;"><DocumentCopy /></el-icon> 系统说明</span>
+              <span><el-icon style="margin-right: 8px;">
+                  <DocumentCopy />
+                </el-icon> 系统说明</span>
             </div>
           </template>
           <div class="intro-content">

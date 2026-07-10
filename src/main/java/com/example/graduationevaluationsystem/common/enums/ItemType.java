@@ -15,13 +15,13 @@ import java.util.Arrays;
 @AllArgsConstructor
 public enum ItemType {
 
-    OPENING_SCORE("开题成绩", "组长", new int[]{4, 4, 4}, 12),
-    TRANSLATION("外文翻译", "指导教师", new int[]{1, 1, 1}, 3),
-    MIDTERM_CHECK("中期检查", "组长", new int[]{5, 5, 5}, 15),
-    SUPERVISION_COMMENT("指导评语", "指导教师", new int[]{3, 3, 3, 3, 3}, 15),
-    REVIEW_COMMENT("评阅评语", "评阅教师", new int[]{4, 4, 4, 3}, 15),
+    OPENING_SCORE("开题报告成绩", "组长", new int[] { 4, 4, 4 }, 12),
+    TRANSLATION("外文翻译", "指导教师", new int[] { 1, 1, 1 }, 3),
+    MIDTERM_CHECK("中期检查成绩", "组长", new int[] { 5, 5, 5 }, 15),
+    SUPERVISION_COMMENT("指导评语", "指导教师", new int[] { 3, 3, 3, 3, 3 }, 15),
+    REVIEW_COMMENT("评阅评语", "评阅教师", new int[] { 4, 4, 4, 3 }, 15),
     DEFENSE_RECORD("答辩记录", "秘书", null, null),
-    DEFENSE_SCORE("答辩成绩", "组长", new int[]{10, 10, 10, 10}, 40),
+    DEFENSE_SCORE("毕业答辩成绩", "组长", new int[] { 10, 10, 10, 10 }, 40),
     COMMITTEE_EVALUATION("委员会评定", "超级管理员", null, 100);
 
     /**

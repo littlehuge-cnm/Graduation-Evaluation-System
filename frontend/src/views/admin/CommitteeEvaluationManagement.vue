@@ -24,38 +24,38 @@ const form = reactive({
   comment: ''
 })
 
-const canEditScore = ref(false)
+const canEditScore = ref(true)
 
 const gradeOptions = ['优', '良', '中', '及格', '不及格']
 
 const scoreItems = [
-  { key: '开题成绩', label: '开题报告', fullScore: 12, weight: 0.12, weightText: '12%' },
+  { key: '开题报告成绩', label: '开题报告', fullScore: 12, weight: 0.12, weightText: '12%' },
   { key: '外文翻译', label: '外文翻译', fullScore: 3, weight: 0.03, weightText: '3%' },
-  { key: '中期检查', label: '中期检查', fullScore: 15, weight: 0.15, weightText: '15%' },
+  { key: '中期检查成绩', label: '中期检查', fullScore: 15, weight: 0.15, weightText: '15%' },
   { key: '指导评语', label: '指导教师评分', fullScore: 15, weight: 0.15, weightText: '15%' },
   { key: '评阅评语', label: '评阅教师评分', fullScore: 15, weight: 0.15, weightText: '15%' },
-  { key: '答辩成绩', label: '答辩成绩', fullScore: 40, weight: 0.40, weightText: '40%' }
+  { key: '毕业答辩成绩', label: '毕业答辩成绩', fullScore: 40, weight: 0.40, weightText: '40%' }
 ]
 
 const subScoreConfigs = {
-  '开题成绩': [
+  '开题报告成绩': [
     { label: '调研资料获取能力', full: 4 },
     { label: '课题方案设计合理性', full: 4 },
     { label: '开题报告规范性与质量', full: 4 }
   ],
   '外文翻译': [
-    { label: '外文阅读理解能力', full: 1 },
-    { label: '专业词语翻译准确性', full: 1 },
+    { label: '对外文资料的阅读理解能力', full: 1 },
+    { label: '专业词语翻译的准确性', full: 1 },
     { label: '译文规范性与质量', full: 1 }
   ],
-  '中期检查': [
-    { label: '完成进度情况', full: 5 },
+  '中期检查成绩': [
+    { label: '完成毕业设计进度情况', full: 5 },
     { label: '综合能力', full: 5 },
-    { label: '已完成部分质量', full: 5 }
+    { label: '已完成部分毕业设计质量', full: 5 }
   ],
   '指导评语': [
     { label: '方案设计能力', full: 3 },
-    { label: '基本理论应用', full: 3 },
+    { label: '基本理论应用能力', full: 3 },
     { label: '分析解决问题能力', full: 3 },
     { label: '科学素养与态度', full: 3 },
     { label: '工作量与规范质量', full: 3 }
@@ -66,10 +66,10 @@ const subScoreConfigs = {
     { label: '研究/设计方案', full: 4 },
     { label: '创新性', full: 3 }
   ],
-  '答辩成绩': [
-    { label: '陈述情况', full: 10 },
-    { label: '论文水平', full: 10 },
-    { label: '工作量评价', full: 10 },
+  '毕业答辩成绩': [
+    { label: '毕业设计（论文）陈述情况', full: 10 },
+    { label: '毕业设计（论文）水平', full: 10 },
+    { label: '毕业设计（论文）工作量评价', full: 10 },
     { label: '答辩情况', full: 10 }
   ]
 }
@@ -187,10 +187,10 @@ function getTableData() {
     fullScore: item.fullScore,
     score: getScore(item.key),
     completed: isItemCompleted(item.key),
-    metaName: (item.key === '中期检查' ? '录入人（检查组长）' :
+    metaName: (item.key === '中期检查成绩' ? '录入人（检查组长）' :
       item.key === '指导评语' ? '指导老师' :
         item.key === '评阅评语' ? '评阅老师' :
-          item.key === '答辩成绩' ? '录入人（答辩小组组长）' : '录入人'),
+          item.key === '毕业答辩成绩' ? '录入人（答辩小组组长）' : '录入人'),
     recorder: getRecorderName(item.key),
     recordTime: getRecordTime(item.key),
     comment: getComment(item.key),
@@ -244,7 +244,6 @@ async function handleSelectStudent(student) {
   form.score = null
   form.grade = ''
   form.comment = ''
-  canEditScore.value = false
   loading.value = true
   try {
     const [recordRes, teacherRes] = await Promise.all([
@@ -255,12 +254,10 @@ async function handleSelectStudent(student) {
     teachers.value = teacherRes || null
     const record = recordRes.find(r => r.itemType === '委员会评定')
     if (record) {
-      form.recordId = record.recordId
+      form.recordId = record.id
       form.comment = record.comment || ''
-      if (!canSubmit.value) {
-        form.score = record.score
-        form.grade = record.grade
-      }
+      form.score = record.score
+      form.grade = record.grade
     }
   } catch (error) {
     ElMessage.error(error.message || '获取评定记录失败')
@@ -406,25 +403,20 @@ onMounted(fetchStudents)
               <el-form :model="form" label-width="120px" class="evaluate-form">
                 <el-form-item label="总评成绩">
                   <el-input-number v-model="form.score" :min="0" :max="100" :precision="2" size="large"
-                    :controls="false" :disabled="!canEditScore" />
+                    :controls="false" />
                   <span class="form-tip">分（满分100分），所有环节完成后自动计算</span>
                 </el-form-item>
                 <el-form-item label="评定等级">
-                  <el-select v-model="form.grade" placeholder="自动计算" size="large" style="width: 200px;"
-                    :disabled="!canEditScore">
+                  <el-select v-model="form.grade" placeholder="自动计算" size="large" style="width: 200px;">
                     <el-option v-for="g in gradeOptions" :key="g" :label="g" :value="g" />
                   </el-select>
                 </el-form-item>
                 <el-form-item label="答辩委员会评语">
-                  <el-input v-model="form.comment" type="textarea" :rows="6" placeholder="请输入答辩委员会评语"
-                    :disabled="!canSubmit" />
+                  <el-input v-model="form.comment" type="textarea" :rows="6" placeholder="请输入答辩委员会评语" />
                 </el-form-item>
                 <el-form-item>
-                  <el-button type="primary" size="large" @click="handleSubmit" :disabled="!canSubmit">
+                  <el-button type="primary" size="large" @click="handleSubmit">
                     {{ form.recordId ? '修改评定' : '提交评定' }}
-                  </el-button>
-                  <el-button type="text" @click="canEditScore = !canEditScore" style="margin-left: 24px;">
-                    {{ canEditScore ? '锁定修改' : '特殊情况启用成绩/等级编辑' }}
                   </el-button>
                 </el-form-item>
               </el-form>
@@ -653,7 +645,5 @@ onMounted(fetchStudents)
   justify-content: center;
   color: #909399;
   font-size: 14px;
-  background-color: #fafafa;
-  border-radius: 4px;
 }
 </style>

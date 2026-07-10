@@ -18,6 +18,7 @@ public class ScoreRecordVO {
     private BigDecimal score;
     private String grade;
     private String comment;
+    private String defenseRecord;
     private String recorderNo;
     private String recorderName;
     private LocalDateTime recordTime;

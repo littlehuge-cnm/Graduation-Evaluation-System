@@ -34,16 +34,16 @@ public class ScoreRecordController {
                             @RequestParam String recorderNo) {
         scoreRecordService.createRecord(dto.getStudentNo(), dto.getItemType(),
                 dto.getSubScores(), dto.getScore(), dto.getGrade(),
-                dto.getComment(), dto.getRecordStatus(), recorderNo);
+                dto.getComment(), dto.getDefenseRecord(), dto.getRecordStatus(), recorderNo);
         return Result.success();
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "修改评价记录", description = "仅暂存状态可修改，已确认需先解锁")
+    @Operation(summary = "修改评价记录", description = "仅暂存状态可修改，已确认需先解锁。支持部分字段更新")
     public Result<Void> update(@Parameter(description = "记录编号") @PathVariable Integer id,
                                @RequestBody ScoreRecordDTO dto) {
         scoreRecordService.updateRecord(id, dto.getSubScores(), dto.getScore(),
-                dto.getGrade(), dto.getComment(), dto.getRecordStatus());
+                dto.getGrade(), dto.getComment(), dto.getDefenseRecord(), dto.getRecordStatus());
         return Result.success();
     }
 

@@ -1,32 +1,40 @@
 <script setup>
 import { ref, reactive, onMounted, computed, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
+import { ArrowRight } from '@element-plus/icons-vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user.js'
 import { getStudentGroupList, getStudentGroupById } from '@/api/studentGroup.js'
 import { getTeacherGroupList } from '@/api/teacherGroup.js'
 import { getGroupMappingList } from '@/api/groupMapping.js'
 import { getScoreRecordList, addScoreRecord, updateScoreRecord } from '@/api/scoreRecord.js'
+import { getTeacherById } from '@/api/teacher.js'
 
 const route = useRoute()
 const userStore = useUserStore()
 const loading = ref(false)
+const teacherGroups = ref([])
 const studentGroups = ref([])
 const mappings = ref([])
 const myTeacherGroupIds = ref([])
+const currentTeacherGroup = ref(null)
+const myRole = ref('')
 const selectedGroup = ref(null)
-const students = ref([])
+const allGroupStudents = ref({})
 const studentStatusMap = ref({})
 const selectedStudent = ref(null)
 const records = ref([])
+const expandedGroups = ref([])
+const teacherNameCache = ref({})
 
 const STAGE = '中期'
-const ITEM_TYPE = '中期检查'
+const ITEM_TYPE = '中期检查成绩'
+const PAGE_TITLE = '中期检查评定'
 
 const subScores = [
-  { label: '进度完成', full: 40 },
-  { label: '工作质量', full: 40 },
-  { label: '工作态度', full: 20 }
+  { label: '完成毕业设计进度情况', full: 5, desc: '超前、正常、滞后' },
+  { label: '综合能力', full: 5, desc: '独立工作能力、调研能力、对知识的综合运用能力等' },
+  { label: '已完成的部分毕业设计质量', full: 5, desc: '' }
 ]
 
 const form = reactive({
@@ -35,6 +43,10 @@ const form = reactive({
   subScores: [null, null, null],
   comment: ''
 })
+
+const searchKeyword = ref('')
+
+const canEdit = computed(() => myRole.value === '组长')
 
 const recordMap = computed(() => {
   const map = {}
@@ -57,15 +69,31 @@ const myGroups = computed(() => {
   }).filter(Boolean)
 })
 
-const sortedStudents = computed(() => {
-  return [...students.value].sort((a, b) => {
-    const statusA = studentStatusMap.value[a.studentNo]
-    const statusB = studentStatusMap.value[b.studentNo]
-    const orderA = statusA?.order || 2
-    const orderB = statusB?.order || 2
-    if (orderA !== orderB) return orderA - orderB
-    return a.studentNo?.localeCompare(b.studentNo)
+const totalStudents = computed(() => {
+  let count = 0
+  myGroups.value.forEach(group => {
+    count += (allGroupStudents.value[group.groupId] || []).length
   })
+  return count
+})
+
+const filteredGroups = computed(() => {
+  if (!searchKeyword.value.trim()) {
+    return myGroups.value.map(g => ({ ...g, _filteredStudents: null }))
+  }
+  const keyword = searchKeyword.value.trim().toLowerCase()
+  return myGroups.value.map(group => {
+    const students = (allGroupStudents.value[group.groupId] || []).filter(s =>
+      s.studentName.toLowerCase().includes(keyword) || s.studentNo.includes(keyword)
+    )
+    if (students.length > 0 || group.groupName.toLowerCase().includes(keyword)) {
+      return {
+        ...group,
+        _filteredStudents: students.length > 0 ? students : (allGroupStudents.value[group.groupId] || [])
+      }
+    }
+    return null
+  }).filter(Boolean)
 })
 
 function parseSubScores(str) {
@@ -90,32 +118,99 @@ async function fetchGroups() {
   loading.value = true
   try {
     const teacherNo = userStore.username
+    teacherNameCache.value[teacherNo] = userStore.name
     const [teacherGroupsRes, mappingsRes, studentGroupsRes] = await Promise.all([
       getTeacherGroupList(),
       getGroupMappingList(),
       getStudentGroupList()
     ])
-    const teacherGroups = teacherGroupsRes || []
-    const myTeacherGroups = teacherGroups.filter(g =>
+    teacherGroups.value = teacherGroupsRes || []
+    const myTeacherGroups = teacherGroups.value.filter(g =>
       g.leaderNo === teacherNo ||
       g.secretaryNo === teacherNo ||
       (g.memberNo && g.memberNo.split(',').includes(teacherNo))
     )
+    if (myTeacherGroups.length > 0) {
+      currentTeacherGroup.value = myTeacherGroups[0]
+      if (currentTeacherGroup.value.leaderNo === teacherNo) {
+        myRole.value = '组长'
+      } else if (currentTeacherGroup.value.secretaryNo === teacherNo) {
+        myRole.value = '秘书'
+      } else {
+        myRole.value = '普通成员'
+      }
+    }
     myTeacherGroupIds.value = myTeacherGroups.map(g => g.groupId)
     mappings.value = mappingsRes || []
     studentGroups.value = studentGroupsRes || []
+
+    if (currentTeacherGroup.value) {
+      const memberNos = []
+      if (currentTeacherGroup.value.leaderNo && !teacherNameCache.value[currentTeacherGroup.value.leaderNo]) {
+        memberNos.push(currentTeacherGroup.value.leaderNo)
+      }
+      if (currentTeacherGroup.value.secretaryNo && !teacherNameCache.value[currentTeacherGroup.value.secretaryNo]) {
+        memberNos.push(currentTeacherGroup.value.secretaryNo)
+      }
+      if (currentTeacherGroup.value.memberNo) {
+        currentTeacherGroup.value.memberNo.split(',').filter(Boolean).forEach(no => {
+          if (!teacherNameCache.value[no]) memberNos.push(no)
+        })
+      }
+      if (memberNos.length > 0) {
+        Promise.all(memberNos.map(no => getTeacherById(no))).then(teachers => {
+          teachers.forEach(t => {
+            teacherNameCache.value[t.teacherNo] = t.teacherName
+          })
+        }).catch(e => console.error('获取教师姓名失败', e))
+      }
+    }
+
+    const allStudentsMap = {}
+    const allStudents = []
+    await Promise.all(myGroups.value.map(async (group) => {
+      try {
+        const groupDetail = await getStudentGroupById(group.groupId)
+        allStudentsMap[group.groupId] = groupDetail.students || []
+        allStudents.push(...(groupDetail.students || []))
+      } catch (e) {
+        console.error(`获取学生组${group.groupId}失败`, e)
+        allStudentsMap[group.groupId] = []
+      }
+    }))
+    allGroupStudents.value = allStudentsMap
+
+    // 批量预加载所有学生的记录状态
+    await Promise.all(allStudents.map(async (student) => {
+      try {
+        const recordRes = await getScoreRecordList(student.studentNo)
+        const records = recordRes || []
+        studentStatusMap.value[student.studentNo] = getItemStatus(records)
+      } catch (e) {
+        console.error(`加载学生${student.studentNo}记录状态失败`, e)
+      }
+    }))
+
+    if (myGroups.value.length > 0) {
+      expandedGroups.value.push(myGroups.value[0].groupId)
+    }
+
     await nextTick()
     const targetGroupId = route.query.groupId
     const targetStudentNo = route.query.studentNo
     if (targetGroupId) {
       const targetGroup = myGroups.value.find(g => String(g.groupId) === String(targetGroupId))
       if (targetGroup) {
-        await handleSelectGroup(targetGroup)
+        selectedGroup.value = targetGroup
+        if (!expandedGroups.value.includes(targetGroup.groupId)) {
+          expandedGroups.value.push(targetGroup.groupId)
+        }
         await nextTick()
         if (targetStudentNo) {
-          const targetStudent = students.value.find(s => s.studentNo === targetStudentNo)
+          const students = allGroupStudents.value[targetGroup.groupId] || []
+          const targetStudent = students.find(s => s.studentNo === targetStudentNo)
           if (targetStudent) {
-            handleSelectStudent(targetStudent)
+            handleSelectStudent(targetStudent, targetGroup)
           }
         }
       }
@@ -127,44 +222,55 @@ async function fetchGroups() {
   }
 }
 
-async function handleSelectGroup(group) {
-  selectedGroup.value = group
-  selectedStudent.value = null
-  form.recordId = null
-  form.score = null
-  form.subScores = [null, null, null]
-  form.comment = ''
-  try {
-    const groupDetail = await getStudentGroupById(group.groupId)
-    const groupStudents = groupDetail.students || []
-    students.value = groupStudents
-    const statusMap = {}
-    await Promise.all(groupStudents.map(async (student) => {
-      try {
-        const recordList = await getScoreRecordList(student.studentNo)
-        statusMap[student.studentNo] = getItemStatus(recordList || [])
-      } catch (e) {
-        statusMap[student.studentNo] = { status: '未录入', type: 'info', order: 1 }
-      }
-    }))
-    studentStatusMap.value = statusMap
-  } catch (error) {
-    ElMessage.error(error.message || '获取组内学生失败')
+function getTeacherName(teacherNo) {
+  return teacherNameCache.value[teacherNo] || teacherNo
+}
+
+const groupMembers = computed(() => {
+  if (!currentTeacherGroup.value) return []
+  const members = []
+  if (currentTeacherGroup.value.leaderNo) {
+    members.push({ no: currentTeacherGroup.value.leaderNo, name: getTeacherName(currentTeacherGroup.value.leaderNo), role: '组长' })
+  }
+  if (currentTeacherGroup.value.secretaryNo) {
+    members.push({ no: currentTeacherGroup.value.secretaryNo, name: getTeacherName(currentTeacherGroup.value.secretaryNo), role: '秘书' })
+  }
+  if (currentTeacherGroup.value.memberNo) {
+    const memberNos = currentTeacherGroup.value.memberNo.split(',').filter(Boolean)
+    memberNos.forEach(no => {
+      members.push({ no, name: getTeacherName(no), role: '成员' })
+    })
+  }
+  return members
+})
+
+function handleSelectGroup(group) {
+  const idx = expandedGroups.value.indexOf(group.groupId)
+  if (idx > -1) {
+    expandedGroups.value.splice(idx, 1)
+  } else {
+    expandedGroups.value.push(group.groupId)
   }
 }
 
-async function handleSelectStudent(student) {
+function handleSelectStudent(student, group = null) {
   selectedStudent.value = student
+  selectedGroup.value = group || myGroups.value.find(g => g.groupId === student.groupId)
   form.recordId = null
   form.score = null
   form.subScores = [null, null, null]
   form.comment = ''
+  loadStudentRecord(student.studentNo)
+}
+
+async function loadStudentRecord(studentNo) {
   try {
-    const recordRes = await getScoreRecordList(student.studentNo)
+    const recordRes = await getScoreRecordList(studentNo)
     records.value = recordRes || []
-    const record = recordMap.value['中期检查']
+    studentStatusMap.value[studentNo] = getItemStatus(records.value)
+    const record = recordMap.value[ITEM_TYPE]
     if (record) {
-      form.recordId = record.recordId
+      form.recordId = record.id
       form.score = record.score
       form.subScores = parseSubScores(record.subScores)
       form.comment = record.comment || ''
@@ -196,6 +302,10 @@ function calculateTotal() {
 }
 
 async function handleSave() {
+  if (!canEdit.value) {
+    ElMessage.warning('您没有编辑权限，仅组长可填写')
+    return
+  }
   if (!selectedStudent.value) {
     ElMessage.warning('请先选择学生')
     return
@@ -212,7 +322,7 @@ async function handleSave() {
   try {
     const data = {
       studentNo: selectedStudent.value.studentNo,
-      itemType: '中期检查',
+      itemType: ITEM_TYPE,
       score: form.score,
       subScores: form.subScores.join(','),
       comment: form.comment,
@@ -226,7 +336,7 @@ async function handleSave() {
     }
     studentStatusMap.value[selectedStudent.value.studentNo] = { status: '已录入', type: 'success', order: 2 }
     ElMessage.success('保存成功')
-    handleSelectStudent(selectedStudent.value)
+    loadStudentRecord(selectedStudent.value.studentNo)
   } catch (error) {
     ElMessage.error(error.message || '保存失败')
   }
@@ -239,79 +349,115 @@ onMounted(() => {
 
 <template>
   <div v-loading="loading">
-    <el-page-header title="中期检查评定" />
-    <el-card class="table-card">
+    <div class="page-header-wrapper">
+      <el-page-header :title="PAGE_TITLE" />
+      <div v-if="currentTeacherGroup" class="group-info-header">
+        <span class="group-label">教师组：</span>
+        <span class="group-name-text">{{ currentTeacherGroup.groupName }}</span>
+        <el-tag size="small" :type="myRole === '组长' ? 'danger' : myRole === '秘书' ? 'warning' : 'info'"
+          class="my-role-tag" effect="dark">
+          {{ myRole }}
+        </el-tag>
+        <el-divider direction="vertical" />
+        <el-tag v-for="member in groupMembers" :key="member.no" size="small"
+          :type="member.role === '组长' ? 'danger' : member.role === '秘书' ? 'warning' : 'info'" class="member-tag">
+          {{ member.name }}（{{ member.role }}）
+        </el-tag>
+      </div>
+    </div>
+
+    <el-card v-if="!loading && (myGroups.length === 0 || totalStudents === 0)" class="table-card empty-card">
+      <el-empty :description="myGroups.length === 0 ? '您没有分配到任何中期检查小组' : '您负责的中期检查小组中暂无需要评定的学生'" />
+    </el-card>
+    <el-card v-else class="table-card">
       <el-row :gutter="16">
-        <el-col :span="5">
-          <div class="list-header">答辩分组列表</div>
-          <div class="group-list">
-            <div v-for="group in myGroups" :key="group.groupId" class="group-item"
-              :class="{ active: selectedGroup?.groupId === group.groupId }" @click="handleSelectGroup(group)">
-              <div class="group-name">{{ group.groupName }}</div>
-              <div class="group-info">{{ group.major || '-' }}</div>
-            </div>
-            <el-empty v-if="!myGroups.length" description="暂无参与的分组" />
+        <el-col :span="5" class="left-col">
+          <div class="search-wrapper">
+            <el-input v-model="searchKeyword" placeholder="搜索组名/学号/姓名" clearable />
           </div>
-        </el-col>
-        <el-col :span="4" v-if="selectedGroup">
-          <div class="list-header">组内学生</div>
-          <div class="student-list">
-            <div v-for="student in sortedStudents" :key="student.studentNo" class="student-item"
-              :class="{ active: selectedStudent?.studentNo === student.studentNo }"
-              @click="handleSelectStudent(student)">
-              <div class="student-item-header">
-                <div class="student-name">{{ student.studentName }}</div>
-                <el-tag :type="studentStatusMap[student.studentNo]?.type || 'info'" size="small">
-                  {{ studentStatusMap[student.studentNo]?.status || '未录入' }}
+          <div class="student-group-list">
+            <div v-for="group in filteredGroups" :key="group.groupId" class="group-section">
+              <div class="group-header" @click="handleSelectGroup(group)">
+                <el-icon class="expand-icon"
+                  :class="{ expanded: expandedGroups.includes(group.groupId) || (searchKeyword && group._filteredStudents) }">
+                  <ArrowRight />
+                </el-icon>
+                <span class="group-name">{{ group.groupName }}</span>
+                <el-tag size="small" type="info" class="student-count">
+                  {{ (group._filteredStudents || allGroupStudents[group.groupId] || []).length }}人
                 </el-tag>
               </div>
-              <div class="student-no">{{ student.studentNo }}</div>
+              <div v-show="expandedGroups.includes(group.groupId) || (searchKeyword && group._filteredStudents)"
+                class="group-students">
+                <div v-for="student in (group._filteredStudents || allGroupStudents[group.groupId] || [])"
+                  :key="student.studentNo" class="student-item"
+                  :class="{ active: selectedStudent?.studentNo === student.studentNo }"
+                  @click="handleSelectStudent(student, group)">
+                  <div class="student-item-header">
+                    <div class="student-name">{{ student.studentName }}</div>
+                    <el-tag :type="studentStatusMap[student.studentNo]?.type || 'info'" size="small">
+                      {{ studentStatusMap[student.studentNo]?.status || '未录入' }}
+                    </el-tag>
+                  </div>
+                  <div class="student-no">{{ student.studentNo }}</div>
+                </div>
+                <div v-if="!(group._filteredStudents || allGroupStudents[group.groupId] || []).length"
+                  class="empty-students">
+                  组内暂无学生
+                </div>
+              </div>
             </div>
-            <el-empty v-if="!students.length" description="组内暂无学生" />
+            <el-empty v-if="!filteredGroups.length" description="暂无匹配的学生" />
           </div>
         </el-col>
-        <el-col :span="15" v-if="selectedGroup" class="right-col">
+        <el-col :span="19" class="right-col">
           <div v-if="selectedStudent" class="detail-panel">
             <div class="detail-header">
               <h3>{{ selectedStudent.studentName }}（{{ selectedStudent.studentNo }}）</h3>
               <div class="header-info">
-                <span>专业：{{ selectedStudent.major || selectedGroup.major || '-' }}</span>
+                <span>专业：{{ selectedStudent.major || selectedGroup?.major || '-' }}</span>
                 <span>班级：{{ selectedStudent.className || '-' }}</span>
-                <span>答辩分组：{{ selectedGroup.groupName }}</span>
+                <span>分组：{{ selectedGroup?.groupName || '-' }}</span>
               </div>
             </div>
 
             <div class="form-section">
               <h4>中期检查成绩评定</h4>
-              <el-form label-width="130px">
-                <div class="sub-scores">
-                  <el-form-item v-for="(sub, idx) in subScores" :key="idx" :label="sub.label">
-                    <div class="score-input-group">
-                      <el-input-number v-model="form.subScores[idx]" :min="0" :max="sub.full" :controls="false"
-                        @change="calculateTotal" style="width: 150px;" />
-                      <span class="score-hint">满分 {{ sub.full }} 分</span>
-                    </div>
+              <el-alert v-if="!canEdit" title="您当前不是组长身份，不能编辑成绩评定，仅可查看" type="warning" show-icon :closable="false"
+                class="section-alert" />
+              <div class="sub-scores-block">
+                <el-form label-width="260px">
+                  <div class="sub-scores">
+                    <el-form-item v-for="(sub, idx) in subScores" :key="idx" :label="sub.label">
+                      <div class="score-row">
+                        <el-input-number v-model="form.subScores[idx]" :min="0" :max="sub.full" :controls="false"
+                          :disabled="!canEdit" @change="calculateTotal" style="width: 120px;" />
+                        <div class="score-right">
+                          <span class="score-hint">满分 {{ sub.full }} 分</span>
+                          <div v-if="sub.desc" class="score-desc">{{ sub.desc }}</div>
+                        </div>
+                      </div>
+                    </el-form-item>
+                  </div>
+                </el-form>
+              </div>
+              <div class="total-comment-block">
+                <el-form label-width="80px">
+                  <el-form-item label="总成绩">
+                    <span class="total-score">{{ form.score ?? '-' }}<span class="total-full"> / 15分</span></span>
                   </el-form-item>
-                </div>
-                <el-form-item label="总分">
-                  <span class="total-score">{{ form.score ?? '-' }} / 100</span>
-                </el-form-item>
-                <el-form-item label="中期检查评语" required>
-                  <el-input v-model="form.comment" type="textarea" :rows="8"
-                    placeholder="请输入中期检查评语，对进度完成情况、工作质量、工作态度进行综合评价" />
-                </el-form-item>
-              </el-form>
+                  <el-form-item label="评语" required>
+                    <el-input v-model="form.comment" type="textarea" :rows="15" :disabled="!canEdit"
+                      placeholder="请输入中期检查评语，对进度完成情况、工作质量、工作态度进行综合评价" />
+                  </el-form-item>
+                </el-form>
+              </div>
               <div class="form-actions">
-                <el-button type="primary" @click="handleSave">保存</el-button>
+                <el-button type="primary" @click="handleSave" :disabled="!canEdit">保存</el-button>
               </div>
             </div>
           </div>
-          <div v-else class="empty-select">
-            <span>请选择学生进行评定</span>
-          </div>
-        </el-col>
-        <el-col :span="19" v-else class="empty-select">
-          <span>请选择左侧分组开始评定</span>
+          <div v-else class="empty-select">请选择左侧学生进行评定</div>
         </el-col>
       </el-row>
     </el-card>
@@ -319,61 +465,122 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.page-header-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.group-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background-color: #f5f7fa;
+  text-align: right;
+}
+
+.group-name-text {
+  font-weight: 600;
+  font-size: 14px;
+  color: #303133;
+}
+
+.my-role-tag {
+  font-size: 12px;
+}
+
+.group-label {
+  font-size: 13px;
+  color: #606266;
+}
+
+.member-tag {
+  font-size: 12px;
+}
+
+.section-alert {
+  margin-bottom: 16px;
+}
+
 .table-card {
   margin-top: 16px;
 }
 
-.list-header {
-  font-weight: 600;
-  margin-bottom: 12px;
-  font-size: 15px;
-  color: #303133;
+.empty-card {
+  height: calc(100vh - 180px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.group-list {
+.left-col {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 220px);
+}
+
+.search-wrapper {
+  margin-bottom: 12px;
+}
+
+.student-group-list {
+  flex: 1;
+  overflow-y: auto;
   border: 1px solid #e4e7ed;
   border-radius: 4px;
-  height: calc(100vh - 220px);
-  overflow-y: auto;
 }
 
-.group-item {
-  padding: 12px 16px;
+.group-section {
   border-bottom: 1px solid #ebeef5;
+}
+
+.group-header {
+  padding: 12px 16px;
   cursor: pointer;
   transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  background-color: #fafafa;
 }
 
-.group-item:hover {
+.group-header:hover {
   background-color: #f5f7fa;
 }
 
-.group-item.active {
-  background-color: #ecf5ff;
-  border-left: 3px solid #409eff;
+.expand-icon {
+  transition: transform 0.2s;
+  font-size: 12px;
+  color: #909399;
+}
+
+.expand-icon.expanded {
+  transform: rotate(90deg);
 }
 
 .group-name {
-  font-weight: 500;
+  flex: 1;
   color: #303133;
 }
 
-.group-info {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 4px;
+.student-count {
+  flex-shrink: 0;
 }
 
-.student-list {
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  height: calc(100vh - 220px);
-  overflow-y: auto;
+.group-students {
+  background-color: #fff;
 }
 
 .student-item {
-  padding: 12px 16px;
-  border-bottom: 1px solid #ebeef5;
+  padding: 10px 16px 10px 36px;
+  border-bottom: 1px solid #f0f2f5;
   cursor: pointer;
   transition: background-color 0.2s;
 }
@@ -391,7 +598,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .student-name {
@@ -402,17 +609,33 @@ onMounted(() => {
 .student-no {
   font-size: 12px;
   color: #909399;
-  margin-top: 0;
+}
+
+.empty-students {
+  padding: 12px 16px 12px 36px;
+  font-size: 12px;
+  color: #909399;
+  text-align: center;
 }
 
 .right-col {
   padding-left: 16px;
+  height: calc(100vh - 220px);
 }
 
 .detail-panel {
-  height: calc(100vh - 220px);
+  height: 100%;
   overflow-y: auto;
-  padding-right: 8px;
+  padding-right: 20px;
+}
+
+.empty-select {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  font-size: 14px;
 }
 
 .detail-header {
@@ -460,15 +683,41 @@ onMounted(() => {
   border-top: 1px solid #e4e7ed;
 }
 
-.score-input-group {
+.score-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
+}
+
+.score-right {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
 
 .score-hint {
   color: #909399;
   font-size: 14px;
+}
+
+.score-desc {
+  color: #909399;
+  font-size: 13px;
+  margin-top: 4px;
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.sub-scores-block {
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e4e7ed;
+  margin-bottom: 20px;
+}
+
+.total-comment-block {
+  margin-top: 10px;
 }
 
 .total-score {
@@ -477,14 +726,18 @@ onMounted(() => {
   color: #409eff;
 }
 
+.total-full {
+  font-size: 14px;
+  font-weight: 400;
+  color: #909399;
+}
+
 .empty-select {
-  height: calc(100vh - 220px);
+  height: calc(100vh - 280px);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #909399;
   font-size: 14px;
-  background-color: #fafafa;
-  border-radius: 4px;
 }
 </style>

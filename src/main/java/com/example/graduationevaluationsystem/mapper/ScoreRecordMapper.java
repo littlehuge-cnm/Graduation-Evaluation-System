@@ -22,7 +22,7 @@ public interface ScoreRecordMapper extends BaseMapper<ScoreRecord> {
      */
     @Select("""
             SELECT r.id, r.student_no, r.item_type, r.sub_scores, r.score, r.grade,
-                   r.comment, r.recorder_no,
+                   r.comment, r.defense_record, r.recorder_no,
                    COALESCE(t.teacher_name, a.admin_name) AS recorder_name,
                    r.record_time, r.update_time, r.record_status
             FROM t_score_record r
@@ -38,7 +38,7 @@ public interface ScoreRecordMapper extends BaseMapper<ScoreRecord> {
     @Select("""
             <script>
             SELECT r.id, r.student_no, r.item_type, r.sub_scores, r.score, r.grade,
-                   r.comment, r.recorder_no,
+                   r.comment, r.defense_record, r.recorder_no,
                    COALESCE(t.teacher_name, a.admin_name) AS recorder_name,
                    r.record_time, r.update_time, r.record_status
             FROM t_score_record r

@@ -114,7 +114,7 @@ async function handleSelectStudent(student) {
     records.value = recordRes || []
     const record = recordMap.value['外文翻译']
     if (record) {
-      form.recordId = record.recordId
+      form.recordId = record.id
       form.score = record.score
       form.subScores = parseSubScores(record.subScores)
       form.comment = record.comment || ''
@@ -190,7 +190,10 @@ onMounted(() => {
 <template>
   <div v-loading="loading">
     <el-page-header title="外文翻译评定" />
-    <el-card class="table-card">
+    <el-card v-if="!loading && students.length === 0" class="table-card empty-card">
+      <el-empty description="您没有需要评定外文翻译的学生" />
+    </el-card>
+    <el-card v-else class="table-card">
       <el-row :gutter="16">
         <el-col :span="5" class="left-col">
           <div class="student-list-header">
@@ -208,10 +211,10 @@ onMounted(() => {
               </div>
               <div class="student-no">{{ student.studentNo }}</div>
             </div>
-            <el-empty v-if="!filteredStudents.length" description="暂无学生" />
+            <el-empty v-if="!filteredStudents.length" description="暂无匹配学生" />
           </div>
         </el-col>
-        <el-col :span="19">
+        <el-col :span="19" class="right-col">
           <div v-if="selectedStudent" class="detail-panel">
             <div class="detail-header">
               <h3>{{ selectedStudent.studentName }}（{{ selectedStudent.studentNo }}）</h3>
@@ -223,26 +226,32 @@ onMounted(() => {
 
             <div class="form-section">
               <h4>外文翻译成绩评定</h4>
-              <el-form label-width="180px" class="translation-form">
-                <div class="sub-scores">
-                  <el-form-item v-for="(sub, idx) in subScores" :key="idx" :label="sub.label">
-                    <div class="score-row">
-                      <el-input-number v-model="form.subScores[idx]" :min="0" :max="sub.full" :step="0.1"
-                        :controls="false" @change="calculateTotal" style="width: 120px;" />
-                      <div class="score-right">
-                        <span class="score-hint">满分 {{ sub.full }} 分</span>
-                        <div class="score-desc">{{ sub.desc }}</div>
+              <div class="sub-scores-block">
+                <el-form label-width="240px">
+                  <div class="sub-scores">
+                    <el-form-item v-for="(sub, idx) in subScores" :key="idx" :label="sub.label">
+                      <div class="score-row">
+                        <el-input-number v-model="form.subScores[idx]" :min="0" :max="sub.full" :step="0.1"
+                          :controls="false" @change="calculateTotal" style="width: 120px;" />
+                        <div class="score-right">
+                          <span class="score-hint">满分 {{ sub.full }} 分</span>
+                          <div class="score-desc" v-if="sub.desc">{{ sub.desc }}</div>
+                        </div>
                       </div>
-                    </div>
+                    </el-form-item>
+                  </div>
+                </el-form>
+              </div>
+              <div class="total-comment-block">
+                <el-form label-width="80px">
+                  <el-form-item label="总成绩">
+                    <span class="total-score">{{ form.score ?? '-' }}<span class="total-full"> / 3分</span></span>
                   </el-form-item>
-                </div>
-                <el-form-item label="外文翻译总成绩">
-                  <span class="total-score">{{ form.score ?? '-' }}<span class="total-full"> / 3分</span></span>
-                </el-form-item>
-                <el-form-item label="评语" required>
-                  <el-input v-model="form.comment" type="textarea" :rows="6" placeholder="请输入外文翻译评语，对学生翻译质量进行评价" />
-                </el-form-item>
-              </el-form>
+                  <el-form-item label="评语" required>
+                    <el-input v-model="form.comment" type="textarea" :rows="15" placeholder="请输入外文翻译评语，对学生翻译质量进行评价" />
+                  </el-form-item>
+                </el-form>
+              </div>
               <div class="form-actions">
                 <el-button type="primary" @click="handleSave">保存</el-button>
               </div>
@@ -260,6 +269,13 @@ onMounted(() => {
   margin-top: 16px;
 }
 
+.empty-card {
+  height: calc(100vh - 150px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .student-list-header {
   margin-bottom: 12px;
 }
@@ -267,6 +283,11 @@ onMounted(() => {
 .left-col {
   display: flex;
   flex-direction: column;
+  height: calc(100vh - 220px);
+}
+
+.right-col {
+  padding-left: 16px;
   height: calc(100vh - 220px);
 }
 
@@ -371,6 +392,8 @@ onMounted(() => {
 .score-right {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
 
 .score-hint {
@@ -383,6 +406,18 @@ onMounted(() => {
   font-size: 13px;
   margin-top: 4px;
   line-height: 1.4;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.sub-scores-block {
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e4e7ed;
+  margin-bottom: 20px;
+}
+
+.total-comment-block {
+  margin-top: 10px;
 }
 
 .total-score {

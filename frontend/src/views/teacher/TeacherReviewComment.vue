@@ -18,15 +18,16 @@ const records = ref([])
 const ITEM_TYPE = '评阅评语'
 
 const subScores = [
-  { label: '选题质量', full: 15 },
-  { label: '能力水平', full: 45 },
-  { label: '成果质量', full: 40 }
+  { label: '毕业设计（论文）规范性与质量', full: 4, desc: '格式的规范性，是否符合要求' },
+  { label: '基本理论和基本知识运用情况', full: 4, desc: '运用与课题相关的基础理论和专业知识分析问题和解决问题的能力；理论、公式的正确性；概念是否清楚，应用是否合理' },
+  { label: '研究方案及设计方案', full: 4, desc: '方案的正确性、逻辑性；论证的严密性，计算是否准确，有无表达错误' },
+  { label: '毕业设计（论文）创新性', full: 3, desc: '研究成果是否具有一定水平，有自己的见解，研究成果有一定的学术或应用价值' }
 ]
 
 const form = reactive({
   recordId: null,
   score: null,
-  subScores: [null, null, null],
+  subScores: [null, null, null, null],
   comment: ''
 })
 
@@ -57,12 +58,12 @@ const filteredStudents = computed(() => {
 })
 
 function parseSubScores(str) {
-  if (!str) return [null, null, null]
+  if (!str) return [null, null, null, null]
   const arr = str.split(',').map(s => {
     const num = parseInt(s.trim())
     return isNaN(num) ? null : num
   })
-  while (arr.length < 3) arr.push(null)
+  while (arr.length < 4) arr.push(null)
   return arr
 }
 
@@ -107,14 +108,14 @@ async function handleSelectStudent(student) {
   selectedStudent.value = student
   form.recordId = null
   form.score = null
-  form.subScores = [null, null, null]
+  form.subScores = [null, null, null, null]
   form.comment = ''
   try {
     const recordRes = await getScoreRecordList(student.studentNo)
     records.value = recordRes || []
     const record = recordMap.value['评阅评语']
     if (record) {
-      form.recordId = record.recordId
+      form.recordId = record.id
       form.score = record.score
       form.subScores = parseSubScores(record.subScores)
       form.comment = record.comment || ''
@@ -190,7 +191,10 @@ onMounted(() => {
 <template>
   <div v-loading="loading">
     <el-page-header title="评阅教师评定" />
-    <el-card class="table-card">
+    <el-card v-if="!loading && students.length === 0" class="table-card empty-card">
+      <el-empty description="您没有需要评阅的学生" />
+    </el-card>
+    <el-card v-else class="table-card">
       <el-row :gutter="16">
         <el-col :span="5" class="left-col">
           <div class="student-list-header">
@@ -208,10 +212,10 @@ onMounted(() => {
               </div>
               <div class="student-no">{{ student.studentNo }}</div>
             </div>
-            <el-empty v-if="!filteredStudents.length" description="暂无学生" />
+            <el-empty v-if="!filteredStudents.length" description="暂无匹配学生" />
           </div>
         </el-col>
-        <el-col :span="19">
+        <el-col :span="19" class="right-col">
           <div v-if="selectedStudent" class="detail-panel">
             <div class="detail-header">
               <h3>{{ selectedStudent.studentName }}（{{ selectedStudent.studentNo }}）</h3>
@@ -223,24 +227,33 @@ onMounted(() => {
 
             <div class="form-section">
               <h4>评阅教师成绩评定</h4>
-              <el-form label-width="130px">
-                <div class="sub-scores">
-                  <el-form-item v-for="(sub, idx) in subScores" :key="idx" :label="sub.label">
-                    <div class="score-input-group">
-                      <el-input-number v-model="form.subScores[idx]" :min="0" :max="sub.full" :controls="false"
-                        @change="calculateTotal" style="width: 150px;" />
-                      <span class="score-hint">满分 {{ sub.full }} 分</span>
-                    </div>
+              <div class="sub-scores-block">
+                <el-form label-width="280px">
+                  <div class="sub-scores">
+                    <el-form-item v-for="(sub, idx) in subScores" :key="idx" :label="sub.label">
+                      <div class="score-row">
+                        <el-input-number v-model="form.subScores[idx]" :min="0" :max="sub.full" :controls="false"
+                          @change="calculateTotal" style="width: 120px;" />
+                        <div class="score-right">
+                          <span class="score-hint">满分 {{ sub.full }} 分</span>
+                          <div v-if="sub.desc" class="score-desc">{{ sub.desc }}</div>
+                        </div>
+                      </div>
+                    </el-form-item>
+                  </div>
+                </el-form>
+              </div>
+              <div class="total-comment-block">
+                <el-form label-width="80px">
+                  <el-form-item label="总成绩">
+                    <span class="total-score">{{ form.score ?? '-' }}<span class="total-full"> / 15分</span></span>
                   </el-form-item>
-                </div>
-                <el-form-item label="总分">
-                  <span class="total-score">{{ form.score ?? '-' }} / 100</span>
-                </el-form-item>
-                <el-form-item label="评阅教师评语" required>
-                  <el-input v-model="form.comment" type="textarea" :rows="8"
-                    placeholder="请输入评阅教师评语，对毕业设计（论文）的选题质量、能力水平、成果质量进行综合评价" />
-                </el-form-item>
-              </el-form>
+                  <el-form-item label="评语" required>
+                    <el-input v-model="form.comment" type="textarea" :rows="15"
+                      placeholder="请输入评阅教师评语，对毕业设计（论文）的选题质量、能力水平、成果质量进行综合评价" />
+                  </el-form-item>
+                </el-form>
+              </div>
               <div class="form-actions">
                 <el-button type="primary" @click="handleSave">保存</el-button>
               </div>
@@ -258,6 +271,13 @@ onMounted(() => {
   margin-top: 16px;
 }
 
+.empty-card {
+  height: calc(100vh - 150px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .student-list-header {
   margin-bottom: 12px;
 }
@@ -265,6 +285,11 @@ onMounted(() => {
 .left-col {
   display: flex;
   flex-direction: column;
+  height: calc(100vh - 220px);
+}
+
+.right-col {
+  padding-left: 16px;
   height: calc(100vh - 220px);
 }
 
@@ -360,10 +385,17 @@ onMounted(() => {
   border-top: 1px solid #e4e7ed;
 }
 
-.score-input-group {
+.score-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
+}
+
+.score-right {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
 
 .score-hint {
@@ -371,10 +403,35 @@ onMounted(() => {
   font-size: 14px;
 }
 
+.score-desc {
+  color: #909399;
+  font-size: 13px;
+  margin-top: 4px;
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.sub-scores-block {
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e4e7ed;
+  margin-bottom: 20px;
+}
+
+.total-comment-block {
+  margin-top: 10px;
+}
+
 .total-score {
   font-size: 22px;
   font-weight: 700;
   color: #409eff;
+}
+
+.total-full {
+  font-size: 14px;
+  font-weight: 400;
+  color: #909399;
 }
 
 .empty-select {

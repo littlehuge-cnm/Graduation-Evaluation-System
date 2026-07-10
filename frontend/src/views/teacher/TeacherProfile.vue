@@ -113,9 +113,9 @@ const defenseGroups = computed(() => getStageGroups('答辩'))
 const currentStageStudents = computed(() => getAllStageStudents(activeStage.value, stageKeyword.value))
 
 const allStageGroups = computed(() => [
-  { stage: '开题', label: '开题答辩', groups: openingGroups.value },
+  { stage: '开题', label: '开题报告', groups: openingGroups.value },
   { stage: '中期', label: '中期检查', groups: midtermGroups.value },
-  { stage: '答辩', label: '最终答辩', groups: defenseGroups.value }
+  { stage: '答辩', label: '毕业答辩', groups: defenseGroups.value }
 ])
 
 const hasAnyStageGroups = computed(() => openingGroups.value.length > 0 || midtermGroups.value.length > 0 || defenseGroups.value.length > 0)
@@ -281,7 +281,7 @@ onMounted(() => {
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span>我指导的学生（{{ superviseStudents.length }}人）</span>
-          <el-input v-model="superviseKeyword" placeholder="搜索学号或姓名" clearable style="width: 200px;" size="small">
+          <el-input v-model="superviseKeyword" placeholder="搜索学号或姓名" clearable style="width: 240px;" size="small">
             <template #prefix>
               <el-icon>
                 <Search />
@@ -311,7 +311,7 @@ onMounted(() => {
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span>我评阅的学生（{{ reviewStudents.length }}人）</span>
-          <el-input v-model="reviewKeyword" placeholder="搜索学号或姓名" clearable style="width: 200px;" size="small">
+          <el-input v-model="reviewKeyword" placeholder="搜索学号或姓名" clearable style="width: 240px;" size="small">
             <template #prefix>
               <el-icon>
                 <Search />
@@ -335,38 +335,36 @@ onMounted(() => {
     </el-card>
 
     <el-card class="info-card" v-if="hasAnyStageGroups">
-      <template #header>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span>环节评定</span>
-          <el-input v-model="stageKeyword" placeholder="搜索组名/学号/姓名" clearable style="width: 240px;">
-            <template #prefix>
-              <el-icon>
-                <Search />
-              </el-icon>
-            </template>
-          </el-input>
-        </div>
-      </template>
-      <el-tabs v-model="activeStage">
-        <el-tab-pane v-for="item in allStageGroups" :key="item.stage"
-          :label="`${item.label} (${getAllStageStudents(item.stage, stageKeyword).length}人)`" :name="item.stage">
-          <el-table :data="getAllStageStudents(item.stage, stageKeyword)" border size="small" style="width: 100%;">
-            <el-table-column prop="groupName" :label="getStageColumnLabel(item.stage)" min-width="180" />
-            <el-table-column prop="studentNo" label="学号" width="150" />
-            <el-table-column prop="studentName" label="姓名" width="120" />
-            <el-table-column prop="className" label="班级" min-width="150" />
-            <el-table-column prop="major" label="专业" min-width="150" />
-            <el-table-column label="操作" width="120" fixed="right">
-              <template #default="{ row }">
-                <el-button type="primary" link size="small"
-                  @click="goToStageEvaluation(item.stage, row.groupId, row.studentNo)">
-                  {{ item.label.replace('分组', '') }}评定
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-tab-pane>
-      </el-tabs>
+      <div class="stage-tabs-wrapper">
+        <el-tabs v-model="activeStage" class="stage-tabs">
+          <el-tab-pane v-for="item in allStageGroups" :key="item.stage"
+            :label="`${item.label} (${getAllStageStudents(item.stage, stageKeyword).length}人)`" :name="item.stage">
+          </el-tab-pane>
+        </el-tabs>
+        <el-input v-model="stageKeyword" placeholder="搜索组名/学号/姓名" clearable style="width: 240px;" size="small"
+          class="stage-search">
+          <template #prefix>
+            <el-icon>
+              <Search />
+            </el-icon>
+          </template>
+        </el-input>
+      </div>
+      <el-table :data="currentStageStudents" border size="small" style="width: 100%;">
+        <el-table-column prop="groupName" :label="getStageColumnLabel(activeStage)" min-width="180" />
+        <el-table-column prop="studentNo" label="学号" width="150" />
+        <el-table-column prop="studentName" label="姓名" width="120" />
+        <el-table-column prop="className" label="班级" min-width="150" />
+        <el-table-column prop="major" label="专业" min-width="150" />
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" link size="small"
+              @click="goToStageEvaluation(activeStage, row.groupId, row.studentNo)">
+              {{allStageGroups.find(g => g.stage === activeStage)?.label?.replace('分组', '')}}评定
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
     </el-card>
   </div>
 </template>
@@ -374,5 +372,25 @@ onMounted(() => {
 <style scoped>
 .info-card {
   margin-top: 16px;
+}
+
+.stage-tabs-wrapper {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--el-border-color-light);
+}
+
+.stage-tabs {
+  flex: 1;
+  margin-bottom: -1px;
+}
+
+.stage-search {
+  margin-left: 16px;
+  margin-bottom: 8px;
+}
+
+:deep(.stage-tabs .el-tabs__header) {
+  margin: 0;
 }
 </style>

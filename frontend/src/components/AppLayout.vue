@@ -83,9 +83,9 @@ const teacherMenus = [
     title: '答辩任务',
     icon: OfficeBuilding,
     children: [
-      { index: '/teacher/group/opening', title: '开题答辩评定', icon: Connection },
+      { index: '/teacher/group/opening', title: '开题报告评定', icon: Connection },
       { index: '/teacher/group/midterm', title: '中期检查评定', icon: Timer },
-      { index: '/teacher/group/defense', title: '最终答辩评定', icon: Medal }
+      { index: '/teacher/group/defense', title: '毕业答辩评定', icon: Medal }
     ]
   }
 ]

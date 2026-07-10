@@ -35,12 +35,14 @@ public class ScoreRecordServiceImpl extends ServiceImpl<ScoreRecordMapper, Score
     @Override
     public Integer createRecord(String studentNo, String itemType, String subScores,
             BigDecimal score, String grade, String comment,
-            Integer recordStatus, String recorderNo) {
+            String defenseRecord, Integer recordStatus, String recorderNo) {
         // 1. 校验条目类型合法
         ItemType type = ItemType.fromName(itemType);
 
-        // 2. 校验分项成绩格式
-        type.validateSubScores(subScores);
+        // 2. 校验分项成绩格式（仅当传了subScores时校验，答辩记录不需要分项成绩）
+        if (subScores != null) {
+            type.validateSubScores(subScores);
+        }
 
         // 3. 校验重复录入
         LambdaQueryWrapper<ScoreRecord> dupWrapper = new LambdaQueryWrapper<>();
@@ -66,9 +68,11 @@ public class ScoreRecordServiceImpl extends ServiceImpl<ScoreRecordMapper, Score
         record.setScore(finalScore);
         record.setGrade(grade);
         record.setComment(comment);
+        record.setDefenseRecord(defenseRecord);
         record.setRecorderNo(recorderNo);
         record.setRecordTime(LocalDateTime.now());
-        record.setRecordStatus(recordStatus != null ? recordStatus : RecordStatus.DRAFT.getCode());
+        // 保存时自动设置为已确认状态，移除暂存/锁定功能
+        record.setRecordStatus(RecordStatus.CONFIRMED.getCode());
 
         save(record);
         return record.getId();
@@ -76,16 +80,11 @@ public class ScoreRecordServiceImpl extends ServiceImpl<ScoreRecordMapper, Score
 
     @Override
     public void updateRecord(Integer id, String subScores, BigDecimal score,
-            String grade, String comment, Integer recordStatus) {
+            String grade, String comment, String defenseRecord,
+            Integer recordStatus) {
         ScoreRecord existing = getById(id);
         if (existing == null) {
             throw new RuntimeException("评价记录不存在");
-        }
-
-        // 仅暂存状态可修改
-        if (existing.getRecordStatus() != null
-                && existing.getRecordStatus() == RecordStatus.CONFIRMED.getCode()) {
-            throw new RuntimeException("该记录已确认，不可修改，如需修改请联系管理员解锁");
         }
 
         // 校验分项成绩（如果传了 subScores）
@@ -114,9 +113,11 @@ public class ScoreRecordServiceImpl extends ServiceImpl<ScoreRecordMapper, Score
         if (comment != null) {
             existing.setComment(comment);
         }
-        if (recordStatus != null) {
-            existing.setRecordStatus(recordStatus);
+        if (defenseRecord != null) {
+            existing.setDefenseRecord(defenseRecord);
         }
+        // 保存时自动设置为已确认状态
+        existing.setRecordStatus(RecordStatus.CONFIRMED.getCode());
         existing.setUpdateTime(LocalDateTime.now());
 
         updateById(existing);
@@ -234,18 +235,9 @@ public class ScoreRecordServiceImpl extends ServiceImpl<ScoreRecordMapper, Score
                 if (existing == null) {
                     // 尚未录入
                     todo.setRecordStatusDesc("未录入");
-                } else {
-                    // 已有记录
-                    todo.setRecordId(existing.getId());
-                    todo.setRecordStatus(existing.getRecordStatus());
-                    if (existing.getRecordStatus() != null
-                            && existing.getRecordStatus() == RecordStatus.CONFIRMED.getCode()) {
-                        // 已确认 → 不属于待录入
-                        continue;
-                    }
-                    todo.setRecordStatusDesc("暂存");
+                    todoList.add(todo);
                 }
-                todoList.add(todo);
+                // 已录入的记录不再显示在待办列表中，直接跳过
             }
         }
 
@@ -255,8 +247,9 @@ public class ScoreRecordServiceImpl extends ServiceImpl<ScoreRecordMapper, Score
     // ==================== 内部方法 ====================
 
     /**
-     * 委员会评定加权计算
-     * 公式：开题×12% + 翻译×3% + 中期×15% + 指导×15% + 评阅×15% + 答辩×40%
+     * 委员会评定直接计算
+     * 公式：开题得分 + 翻译得分 + 中期得分 + 指导得分 + 评阅得分 + 答辩得分
+     * 各项满分相加为100分（12+3+15+15+15+40=100）
      */
     private BigDecimal calculateCommitteeScore(String studentNo) {
         List<Map<String, Object>> scores = baseMapper.selectConfirmedScores(studentNo);
@@ -273,8 +266,8 @@ public class ScoreRecordServiceImpl extends ServiceImpl<ScoreRecordMapper, Score
             }
         }
 
-        // 检查六项成绩是否齐全
-        double total = 0;
+        // 检查六项成绩是否齐全，并直接相加
+        BigDecimal total = BigDecimal.ZERO;
         for (ItemType type : ItemType.values()) {
             Double weight = type.getWeight();
             if (weight == null) {
@@ -284,10 +277,11 @@ public class ScoreRecordServiceImpl extends ServiceImpl<ScoreRecordMapper, Score
             if (score == null) {
                 throw new RuntimeException("委员会评定需要" + type.getName() + "已确认，请先完成录入");
             }
-            total += score.doubleValue() * weight;
+            // 直接累加原始得分
+            total = total.add(score);
         }
 
-        return BigDecimal.valueOf(total).setScale(2, RoundingMode.HALF_UP);
+        return total.setScale(2, RoundingMode.HALF_UP);
     }
 
     /**

@@ -22,16 +22,12 @@ const form = reactive({
   recordId: null,
   score: null,
   grade: '',
-  comment: '',
-  recordStatus: 1
+  comment: ''
 })
 
 function getItemStatus(record) {
   if (record && record.score !== null && record.score !== undefined) {
-    if (record.recordStatus === 2) {
-      return { status: '已确认', type: 'success', order: 3 }
-    }
-    return { status: '已录入', type: 'warning', order: 2 }
+    return { status: '已录入', type: 'success', order: 2 }
   }
   return { status: '未录入', type: 'info', order: 1 }
 }
@@ -59,7 +55,7 @@ async function fetchData() {
   try {
     const todoRes = await getScoreRecordTodo(userStore.username, 'admin')
     const todoList = todoRes || []
-    
+
     const studentMap = new Map()
     todoList.forEach(item => {
       if (!studentMap.has(item.studentNo)) {
@@ -72,7 +68,7 @@ async function fetchData() {
       }
     })
     students.value = Array.from(studentMap.values())
-    
+
     const statusMap = {}
     await Promise.all(students.value.map(async (student) => {
       try {
@@ -84,14 +80,14 @@ async function fetchData() {
       }
     }))
     studentStatusMap.value = statusMap
-    
+
     try {
       const studentRes = await getStudentList({ pageNum: 1, pageSize: 1000 })
       allStudents.value = studentRes.list || []
     } catch (e) {
       console.error(e)
     }
-    
+
     if (route.query.studentNo) {
       const targetStudent = students.value.find(s => s.studentNo === route.query.studentNo)
       if (targetStudent) {
@@ -112,17 +108,15 @@ async function handleSelectStudent(student) {
   form.score = null
   form.grade = ''
   form.comment = ''
-  form.recordStatus = 1
   try {
     const recordRes = await getScoreRecordList(student.studentNo)
     records.value = recordRes || []
     const record = records.value.find(r => r.itemType === '委员会评定')
     if (record) {
-      form.recordId = record.recordId
+      form.recordId = record.id
       form.score = record.score
       form.grade = record.grade || ''
       form.comment = record.comment || ''
-      form.recordStatus = record.recordStatus || 1
     }
   } catch (error) {
     ElMessage.error(error.message || '加载评定信息失败')
@@ -146,10 +140,6 @@ async function handleSave() {
     ElMessage.warning('请输入评语')
     return
   }
-  if (form.recordStatus === 2) {
-    ElMessage.warning('已确认的记录请先解锁再修改')
-    return
-  }
 
   try {
     const data = {
@@ -157,8 +147,7 @@ async function handleSave() {
       itemType: '委员会评定',
       score: form.score,
       grade: form.grade,
-      comment: form.comment,
-      recordStatus: 2
+      comment: form.comment
     }
 
     if (form.recordId) {
@@ -168,41 +157,11 @@ async function handleSave() {
       await addScoreRecord(data, userStore.username)
       ElMessage.success('录入成功')
     }
-    studentStatusMap.value[selectedStudent.value.studentNo] = { status: '已录入', type: 'warning', order: 2 }
+    studentStatusMap.value[selectedStudent.value.studentNo] = { status: '已录入', type: 'success', order: 2 }
     handleSelectStudent(selectedStudent.value)
     fetchData()
   } catch (error) {
     ElMessage.error(error.message || '保存失败')
-  }
-}
-
-async function handleConfirm() {
-  if (!form.recordId) {
-    ElMessage.warning('请先保存评定记录')
-    return
-  }
-  try {
-    await ElMessageBox.confirm('确认后将不能修改，是否继续？', '提示', { type: 'warning' })
-    await confirmScoreRecord(form.recordId)
-    ElMessage.success('确认成功')
-    studentStatusMap.value[selectedStudent.value.studentNo] = { status: '已确认', type: 'success', order: 3 }
-    handleSelectStudent(selectedStudent.value)
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error(error.message || '确认失败')
-    }
-  }
-}
-
-async function handleUnlock() {
-  if (!form.recordId) return
-  try {
-    await unlockScoreRecord(form.recordId)
-    ElMessage.success('解锁成功')
-    studentStatusMap.value[selectedStudent.value.studentNo] = { status: '已录入', type: 'warning', order: 2 }
-    handleSelectStudent(selectedStudent.value)
-  } catch (error) {
-    ElMessage.error(error.message || '解锁失败')
   }
 }
 
@@ -254,25 +213,21 @@ onMounted(() => {
                   <span style="margin-left: 12px; color: #909399; font-size: 14px;">满分100分</span>
                 </el-form-item>
                 <el-form-item label="评定等级" required>
-                  <el-select v-model="form.grade" placeholder="请选择等级" style="width: 200px;"
-                    :disabled="form.recordStatus === 2">
+                  <el-select v-model="form.grade" placeholder="请选择等级" style="width: 200px;">
                     <el-option v-for="g in gradeOptions" :key="g" :label="g" :value="g" />
                   </el-select>
                 </el-form-item>
                 <el-form-item label="委员会评语" required>
-                  <el-input v-model="form.comment" type="textarea" :rows="8"
-                    placeholder="请输入答辩委员会综合评语" :disabled="form.recordStatus === 2" />
+                  <el-input v-model="form.comment" type="textarea" :rows="8" placeholder="请输入答辩委员会综合评语" />
                 </el-form-item>
                 <el-form-item label="状态">
-                  <el-tag :type="form.recordStatus === 2 ? 'success' : 'warning'">
-                    {{ form.recordStatus === 2 ? '已确认' : '已录入' }}
+                  <el-tag :type="form.recordId ? 'success' : 'info'">
+                    {{ form.recordId ? '已录入' : '未录入' }}
                   </el-tag>
                 </el-form-item>
               </el-form>
               <div class="form-actions">
-                <el-button type="primary" @click="handleSave" :disabled="form.recordStatus === 2">保存</el-button>
-                <el-button v-if="form.recordId && form.recordStatus !== 2" type="success" @click="handleConfirm">确认</el-button>
-                <el-button v-if="form.recordId && form.recordStatus === 2" type="warning" @click="handleUnlock">解锁</el-button>
+                <el-button type="primary" @click="handleSave">{{ form.recordId ? '修改保存' : '保存' }}</el-button>
               </div>
             </div>
           </div>

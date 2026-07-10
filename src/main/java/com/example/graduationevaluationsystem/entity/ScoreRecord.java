@@ -30,6 +30,8 @@ public class ScoreRecord {
 
     private String comment;
 
+    private String defenseRecord;
+
     private String recorderNo;
 
     private LocalDateTime recordTime;

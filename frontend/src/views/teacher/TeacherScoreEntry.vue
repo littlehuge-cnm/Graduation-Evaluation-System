@@ -1,8 +1,8 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user.js'
-import { getScoreRecordTodo, addScoreRecord, updateScoreRecord, confirmScoreRecord } from '@/api/scoreRecord.js'
+import { getScoreRecordTodo, addScoreRecord, updateScoreRecord } from '@/api/scoreRecord.js'
 
 const userStore = useUserStore()
 const loading = ref(false)
@@ -10,13 +10,13 @@ const tableData = ref([])
 const activeItemType = ref('')
 
 const itemTypeConfigs = {
-  '开题成绩': { label: '开题成绩', max: 4, count: 3, hasComment: false },
-  '外文翻译': { label: '外文翻译成绩', max: 1, count: 3, hasComment: false },
-  '中期检查': { label: '中期检查成绩', max: 5, count: 3, hasComment: true },
-  '指导评语': { label: '指导教师评语', max: 3, count: 5, hasComment: true },
-  '评阅评语': { label: '评阅教师评语', max: 4, count: 4, hasComment: true, maxList: [4, 4, 4, 3] },
+  '开题报告成绩': { label: '开题报告成绩', max: 4, count: 3, hasComment: false, labels: ['调研资料的获取能力', '课题方案设计的合理性', '开题报告的规范性与质量'] },
+  '外文翻译': { label: '外文翻译成绩', max: 1, count: 3, hasComment: false, labels: ['对外文资料的阅读理解能力', '专业词语翻译的准确性', '译文规范性与质量'] },
+  '中期检查成绩': { label: '中期检查成绩', max: 5, count: 3, hasComment: true, labels: ['完成毕业设计进度情况', '综合能力', '已完成的部分毕业设计质量'] },
+  '指导评语': { label: '指导教师评语', max: 3, count: 5, hasComment: true, labels: ['设计（实验）方案、研究方案及软硬件方案设计能力', '基本概念、基本理论的应用能力', '分析问题、解决问题及知识综合运用能力', '科学素养、学习态度、纪律表现', '工作量及毕业设计（论文）规范与质量'] },
+  '评阅评语': { label: '评阅教师评语', max: 4, count: 4, hasComment: true, maxList: [4, 4, 4, 3], labels: ['毕业设计（论文）规范性与质量', '基本理论和基本知识运用情况', '研究方案及设计方案', '毕业设计（论文）创新性'] },
   '答辩记录': { label: '答辩记录', max: 0, count: 0, hasComment: true },
-  '答辩成绩': { label: '答辩成绩', max: 10, count: 4, hasComment: true }
+  '毕业答辩成绩': { label: '毕业答辩成绩', max: 10, count: 4, hasComment: true, labels: ['毕业设计（论文）陈述情况', '毕业设计（论文）水平', '毕业设计（论文）工作量评价', '答辩情况'] }
 }
 
 const dialogVisible = ref(false)
@@ -30,8 +30,7 @@ const form = reactive({
   subScores: [],
   score: null,
   grade: '',
-  comment: '',
-  recordStatus: 1
+  comment: ''
 })
 
 const gradeOptions = ['优', '良', '中', '及格', '不及格']
@@ -78,7 +77,6 @@ function handleEntry(row) {
   form.score = row.score || null
   form.grade = row.grade || ''
   form.comment = row.comment || ''
-  form.recordStatus = row.recordStatus || 1
 
   if (row.subScores) {
     form.subScores = row.subScores.split(',').map(Number)
@@ -106,8 +104,7 @@ async function handleSubmit() {
       subScores: currentConfig.value.count > 0 ? form.subScores.join(',') : '',
       score: form.score,
       grade: form.grade,
-      comment: form.comment,
-      recordStatus: form.recordStatus
+      comment: form.comment
     }
 
     if (form.recordId) {
@@ -124,27 +121,6 @@ async function handleSubmit() {
   }
 }
 
-async function handleConfirm(row) {
-  try {
-    await ElMessageBox.confirm('确认后将不能修改，是否继续？', '提示', { type: 'warning' })
-    await confirmScoreRecord(row.recordId)
-    ElMessage.success('确认成功')
-    fetchData()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error(error.message || '确认失败')
-    }
-  }
-}
-
-function getStatusType(status) {
-  return status === 2 ? 'success' : 'info'
-}
-
-function getStatusLabel(status) {
-  return status === 2 ? '已确认' : '暂存'
-}
-
 onMounted(fetchData)
 </script>
 
@@ -155,12 +131,7 @@ onMounted(fetchData)
       <template #header>
         <div class="card-header">
           <el-select v-model="activeItemType" placeholder="全部条目类型" clearable style="width: 200px;">
-            <el-option
-              v-for="item in itemTypeOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
+            <el-option v-for="item in itemTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </div>
       </template>
@@ -170,15 +141,9 @@ onMounted(fetchData)
         <el-table-column prop="studentNo" label="学号" min-width="120" />
         <el-table-column prop="studentName" label="姓名" min-width="100" />
         <el-table-column prop="score" label="当前成绩" width="100" />
-        <el-table-column prop="recordStatusDesc" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.recordStatus)">{{ row.recordStatusDesc || getStatusLabel(row.recordStatus) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEntry(row)">录入</el-button>
-            <el-button v-if="row.recordId && row.recordStatus === 1" type="success" link @click="handleConfirm(row)">确认</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -192,14 +157,9 @@ onMounted(fetchData)
         <el-form-item v-if="currentConfig?.count > 0" label="分项成绩">
           <div class="sub-scores">
             <div v-for="(score, index) in form.subScores" :key="index" class="score-item">
-              <span>第{{ index + 1 }}项</span>
-              <el-input-number
-                v-model="form.subScores[index]"
-                :min="0"
-                :max="getMax(index)"
-                :precision="0"
-                @change="calculateScore"
-              />
+              <span>{{ currentConfig.labels ? currentConfig.labels[index] : `第${index + 1}项` }}</span>
+              <el-input-number v-model="form.subScores[index]" :min="0" :max="getMax(index)" :precision="0"
+                @change="calculateScore" />
               <span class="max-score">/{{ getMax(index) }}</span>
             </div>
           </div>
@@ -213,13 +173,8 @@ onMounted(fetchData)
           </el-select>
         </el-form-item>
         <el-form-item v-if="currentConfig?.hasComment" label="评语/记录">
-          <el-input v-model="form.comment" type="textarea" :rows="6" placeholder="请输入评语或记录内容" maxlength="2000" show-word-limit />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-radio-group v-model="form.recordStatus">
-            <el-radio :label="1">暂存</el-radio>
-            <el-radio :label="2">已确认</el-radio>
-          </el-radio-group>
+          <el-input v-model="form.comment" type="textarea" :rows="6" placeholder="请输入评语或记录内容" maxlength="2000"
+            show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>

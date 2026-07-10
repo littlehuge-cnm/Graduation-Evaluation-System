@@ -50,7 +50,7 @@ const navItems = [
   { id: 'section-supervisor', label: '指导评语' },
   { id: 'section-reviewer', label: '评阅评分' },
   { id: 'section-defense-record', label: '答辩记录' },
-  { id: 'section-defense-score', label: '答辩成绩' },
+  { id: 'section-defense-score', label: '毕业答辩' },
   { id: 'section-final', label: '总评成绩' }
 ]
 
@@ -98,7 +98,7 @@ function getScore(itemType) {
 function getComment(itemType) {
   const r = recordMap.value[itemType]
   if (itemType === '答辩记录') {
-    return r?.comment || '暂无答辩记录'
+    return r?.defenseRecord || '暂无答辩记录'
   }
   return r?.comment || '暂无评语'
 }
@@ -310,28 +310,42 @@ const finalGrade = computed(() => {
   return r?.grade ?? '未评定'
 })
 
-const progressItems = ['任务书', '指导书', '开题成绩', '外文翻译', '中期检查', '指导评语', '评阅评语', '答辩记录', '答辩成绩', '委员会评定']
+const progressItems = [
+  { label: '任务书', type: '任务书' },
+  { label: '指导书', type: '指导书' },
+  { label: '开题报告', type: '开题报告成绩' },
+  { label: '外文翻译', type: '外文翻译' },
+  { label: '中期检查', type: '中期检查成绩' },
+  { label: '指导评语', type: '指导评语' },
+  { label: '评阅评分', type: '评阅评语' },
+  { label: '答辩记录', type: '答辩记录' },
+  { label: '毕业答辩', type: '毕业答辩成绩' },
+  { label: '总评成绩', type: '委员会评定' }
+]
 
 onMounted(fetchStudents)
 </script>
 
 <template>
-  <div>
+  <div v-loading="loading">
     <el-page-header title="评价手册查看" />
-    <el-card class="table-card">
+    <el-card v-if="!loading && students.length === 0" class="table-card empty-card">
+      <el-empty description="您没有需要查看评价手册的学生" />
+    </el-card>
+    <el-card v-else class="table-card">
       <el-row :gutter="16">
         <el-col :span="5" class="left-col">
           <div class="student-list-header">
             <el-input v-model="keyword" placeholder="搜索学号/姓名" clearable />
           </div>
-          <div v-loading="loading" class="student-list">
+          <div class="student-list">
             <div v-for="student in filteredStudents" :key="student.studentNo" class="student-item"
               :class="{ active: selectedStudent?.studentNo === student.studentNo }"
               @click="handleSelectStudent(student)">
               <div class="student-name">{{ student.studentName }}</div>
               <div class="student-no">{{ student.studentNo }}</div>
             </div>
-            <el-empty v-if="!filteredStudents.length" description="暂无学生" />
+            <el-empty v-if="!filteredStudents.length" description="暂无匹配学生" />
           </div>
           <div class="action-bar">
             <el-button type="primary" size="small" @click="handlePreview" :disabled="!selectedStudent"
@@ -342,297 +356,319 @@ onMounted(fetchStudents)
               class="action-btn">批量导出评价手册</el-button>
           </div>
         </el-col>
-        <el-col :span="19">
-          <div v-if="selectedStudent" v-loading="loading" class="detail-panel" @scroll="handleScroll">
-            <div class="detail-header">
-              <h3>{{ selectedStudent.studentName }}（{{ selectedStudent.studentNo }}）</h3>
-              <div class="header-info">
-                <span>专业：{{ selectedStudent.major || '-' }}</span>
-                <span>班级：{{ selectedStudent.className || '-' }}</span>
-                <span>年级：{{ selectedStudent.grade || '-' }}</span>
+        <el-col :span="19" class="right-col">
+          <div v-if="selectedStudent" class="detail-wrapper">
+            <div class="detail-panel" @scroll="handleScroll">
+              <div class="detail-header">
+                <h3>{{ selectedStudent.studentName }}（{{ selectedStudent.studentNo }}）</h3>
+                <div class="header-info">
+                  <span>专业：{{ selectedStudent.major || '-' }}</span>
+                  <span>班级：{{ selectedStudent.className || '-' }}</span>
+                  <span>年级：{{ selectedStudent.grade || '-' }}</span>
+                </div>
+                <div class="header-info">
+                  <span>学生组：{{ groupNameMap[selectedStudent.studentGroupId] || '未分组' }}</span>
+                  <span>指导教师：{{ teachers?.supervisor?.teacherName || '-' }}</span>
+                  <span>评阅教师：{{ teachers?.reviewer?.teacherName || '-' }}</span>
+                </div>
               </div>
-              <div class="header-info">
-                <span>学生组：{{ groupNameMap[selectedStudent.studentGroupId] || '未分组' }}</span>
-                <span>指导教师：{{ teachers?.supervisor?.teacherName || '-' }}</span>
-                <span>评阅教师：{{ teachers?.reviewer?.teacherName || '-' }}</span>
+
+              <div id="section-progress" class="section">
+                <h4>评价任务进度</h4>
+                <div class="progress-horizontal">
+                  <div v-for="item in progressItems" :key="item.type" class="progress-item"
+                    :class="getStatusType(item.type)">
+                    <el-tag :type="getStatusType(item.type)" size="small" class="progress-tag">
+                      {{ isCompleted(item.type) ? '已完成' : '未完成' }}
+                    </el-tag>
+                    <div class="progress-name">{{ item.label }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="section-task" class="section">
+                <h4>任务书</h4>
+                <div class="doc-info-grid">
+                  <div class="doc-info-item full-width">
+                    <span class="info-label">毕业设计（论文）题目：</span>
+                    <span class="info-value">{{ getDoc('任务书')?.title || '-' }}</span>
+                  </div>
+                  <div class="doc-info-item">
+                    <span class="info-label">课题类别：</span>
+                    <span class="info-value">{{ getCategoryLabel(getDoc('任务书')?.subjectCategory) }}</span>
+                  </div>
+                  <div class="doc-info-item">
+                    <span class="info-label">课题类型：</span>
+                    <span class="info-value">{{ getTypeLabel(getDoc('任务书')?.subjectType) }}</span>
+                  </div>
+                  <div class="doc-info-item">
+                    <span class="info-label">新旧课题：</span>
+                    <span class="info-value">{{ getNewOldLabel(getDoc('任务书')?.subjectNewOld) }}</span>
+                  </div>
+                </div>
+                <div v-if="getDoc('任务书')?.content" class="doc-content">
+                  <div class="content-section">
+                    <h5 class="content-title">课题研究的主要内容</h5>
+                    <div class="content-text">{{ getTaskContentParts().mainContent }}</div>
+                  </div>
+                  <div v-if="getTaskContentParts().basicRequirement" class="content-section" style="margin-top: 16px;">
+                    <h5 class="content-title">基本要求</h5>
+                    <div class="content-text">{{ getTaskContentParts().basicRequirement }}</div>
+                  </div>
+                </div>
+                <div v-else class="empty-hint">暂无任务书内容</div>
+              </div>
+
+              <div id="section-guide" class="section">
+                <h4>指导书</h4>
+                <div v-if="getDoc('指导书')?.content" class="doc-content">
+                  <div class="content-text">{{ getDoc('指导书').content }}</div>
+                </div>
+                <div v-else class="empty-hint">暂无指导书内容</div>
+              </div>
+
+              <div id="section-opening" class="section">
+                <h4>开题报告成绩</h4>
+                <el-table :data="[{
+                  name: '得分',
+                  item1: getSubScoreDisplay('开题报告成绩', 0),
+                  item2: getSubScoreDisplay('开题报告成绩', 1),
+                  item3: getSubScoreDisplay('开题报告成绩', 2),
+                  total: getScore('开题报告成绩')
+                }, {
+                  name: '满分',
+                  item1: 4,
+                  item2: 4,
+                  item3: 4,
+                  total: 12
+                }]" border>
+                  <el-table-column prop="name" label="" width="80" />
+                  <el-table-column prop="item1" label="调研资料的获取能力" />
+                  <el-table-column prop="item2" label="课题方案设计的合理性" />
+                  <el-table-column prop="item3" label="开题报告的规范性与质量" />
+                  <el-table-column prop="total" label="总成绩" width="100" />
+                </el-table>
+                <div class="comment-block">
+                  <div class="meta-info"><strong>录入人：</strong>{{ getRecorderName('开题报告成绩') }} &nbsp;|&nbsp;
+                    <strong>录入时间：</strong>{{ getRecordTime('开题报告成绩') }}
+                  </div>
+                  <div class="comment-text">{{ getComment('开题报告成绩') }}</div>
+                </div>
+              </div>
+
+              <div id="section-translation" class="section">
+                <h4>外文翻译成绩</h4>
+                <el-table :data="[{
+                  name: '得分',
+                  item1: getSubScoreDisplay('外文翻译', 0),
+                  item2: getSubScoreDisplay('外文翻译', 1),
+                  item3: getSubScoreDisplay('外文翻译', 2),
+                  total: getScore('外文翻译')
+                }, {
+                  name: '满分',
+                  item1: 1,
+                  item2: 1,
+                  item3: 1,
+                  total: 3
+                }]" border>
+                  <el-table-column prop="name" label="" width="80" />
+                  <el-table-column prop="item1" label="对外文资料的阅读理解能力" />
+                  <el-table-column prop="item2" label="专业词语翻译的准确性" />
+                  <el-table-column prop="item3" label="译文规范性与质量" />
+                  <el-table-column prop="total" label="总成绩" width="100" />
+                </el-table>
+                <div class="comment-block">
+                  <div class="meta-info"><strong>录入人：</strong>{{ getRecorderName('外文翻译') }} &nbsp;|&nbsp;
+                    <strong>录入时间：</strong>{{ getRecordTime('外文翻译') }}
+                  </div>
+                  <div class="comment-text">{{ getComment('外文翻译') }}</div>
+                </div>
+              </div>
+
+              <div id="section-midterm" class="section">
+                <h4>中期检查评语及成绩</h4>
+                <el-table :data="[{
+                  name: '得分',
+                  item1: getSubScoreDisplay('中期检查成绩', 0),
+                  item2: getSubScoreDisplay('中期检查成绩', 1),
+                  item3: getSubScoreDisplay('中期检查成绩', 2),
+                  total: getScore('中期检查成绩')
+                }, {
+                  name: '满分',
+                  item1: 5,
+                  item2: 5,
+                  item3: 5,
+                  total: 15
+                }]" border>
+                  <el-table-column prop="name" label="" width="80" />
+                  <el-table-column prop="item1" label="完成毕业设计进度情况" />
+                  <el-table-column prop="item2" label="综合能力" />
+                  <el-table-column prop="item3" label="已完成的部分毕业设计质量" />
+                  <el-table-column prop="total" label="总成绩" width="100" />
+                </el-table>
+                <div class="comment-block">
+                  <div class="meta-info"><strong>录入人：</strong>{{ getRecorderName('中期检查成绩') }} &nbsp;|&nbsp;
+                    <strong>录入时间：</strong>{{ getRecordTime('中期检查成绩') }}
+                  </div>
+                  <div class="comment-text">{{ getComment('中期检查成绩') }}</div>
+                </div>
+              </div>
+
+              <div id="section-supervisor" class="section">
+                <h4>指导老师评语及建议成绩</h4>
+                <el-table :data="[{
+                  name: '得分',
+                  item1: getSubScoreDisplay('指导评语', 0),
+                  item2: getSubScoreDisplay('指导评语', 1),
+                  item3: getSubScoreDisplay('指导评语', 2),
+                  item4: getSubScoreDisplay('指导评语', 3),
+                  item5: getSubScoreDisplay('指导评语', 4),
+                  total: getScore('指导评语')
+                }, {
+                  name: '满分',
+                  item1: 3,
+                  item2: 3,
+                  item3: 3,
+                  item4: 3,
+                  item5: 3,
+                  total: 15
+                }]" border>
+                  <el-table-column prop="name" label="" width="80" />
+                  <el-table-column prop="item1" label="设计（实验）方案、研究方案及软硬件方案设计能力" />
+                  <el-table-column prop="item2" label="基本概念、基本理论的应用能力" />
+                  <el-table-column prop="item3" label="分析问题、解决问题及知识综合运用能力" />
+                  <el-table-column prop="item4" label="科学素养、学习态度、纪律表现" />
+                  <el-table-column prop="item5" label="工作量及毕业设计（论文）规范与质量" />
+                  <el-table-column prop="total" label="总成绩" width="90" />
+                </el-table>
+                <div class="comment-block">
+                  <div class="meta-info"><strong>指导老师：</strong>{{ getRecorderName('指导评语') }} &nbsp;|&nbsp;
+                    <strong>录入时间：</strong>{{ getRecordTime('指导评语') }}
+                  </div>
+                  <div class="comment-text">{{ getComment('指导评语') }}</div>
+                </div>
+              </div>
+
+              <div id="section-reviewer" class="section">
+                <h4>评阅教师评分及评语</h4>
+                <el-table :data="[{
+                  name: '得分',
+                  item1: getSubScoreDisplay('评阅评语', 0),
+                  item2: getSubScoreDisplay('评阅评语', 1),
+                  item3: getSubScoreDisplay('评阅评语', 2),
+                  item4: getSubScoreDisplay('评阅评语', 3),
+                  total: getScore('评阅评语')
+                }, {
+                  name: '满分',
+                  item1: 4,
+                  item2: 4,
+                  item3: 4,
+                  item4: 3,
+                  total: 15
+                }]" border>
+                  <el-table-column prop="name" label="" width="80" />
+                  <el-table-column prop="item1" label="毕业设计（论文）规范性与质量" />
+                  <el-table-column prop="item2" label="基本理论和基本知识运用情况" />
+                  <el-table-column prop="item3" label="研究方案及设计方案" />
+                  <el-table-column prop="item4" label="毕业设计（论文）创新性" />
+                  <el-table-column prop="total" label="总成绩" width="90" />
+                </el-table>
+                <div class="comment-block">
+                  <div class="meta-info"><strong>评阅老师：</strong>{{ getRecorderName('评阅评语') }} &nbsp;|&nbsp;
+                    <strong>录入时间：</strong>{{ getRecordTime('评阅评语') }}
+                  </div>
+                  <div class="comment-text">{{ getComment('评阅评语') }}</div>
+                </div>
+              </div>
+
+              <div id="section-defense-record" class="section">
+                <h4>答辩记录</h4>
+                <div class="meta-info"><strong>记录人：</strong>{{ getRecorderName('答辩记录') }} &nbsp;|&nbsp;
+                  <strong>答辩日期：</strong>{{ getRecordTime('答辩记录') }}
+                </div>
+                <div class="comment-block">
+                  <div class="comment-text">{{ getComment('答辩记录') }}</div>
+                </div>
+              </div>
+
+              <div id="section-defense-score" class="section">
+                <h4>毕业答辩小组评定成绩</h4>
+                <el-table :data="[{
+                  name: '得分',
+                  item1: getSubScoreDisplay('毕业答辩成绩', 0),
+                  item2: getSubScoreDisplay('毕业答辩成绩', 1),
+                  item3: getSubScoreDisplay('毕业答辩成绩', 2),
+                  item4: getSubScoreDisplay('毕业答辩成绩', 3),
+                  total: getScore('毕业答辩成绩')
+                }, {
+                  name: '满分',
+                  item1: 10,
+                  item2: 10,
+                  item3: 10,
+                  item4: 10,
+                  total: 40
+                }]" border>
+                  <el-table-column prop="name" label="" width="80" />
+                  <el-table-column prop="item1" label="毕业设计（论文）陈述情况" />
+                  <el-table-column prop="item2" label="毕业设计（论文）水平" />
+                  <el-table-column prop="item3" label="毕业设计（论文）工作量评价" />
+                  <el-table-column prop="item4" label="答辩情况" />
+                  <el-table-column prop="total" label="总成绩" width="100" />
+                </el-table>
+                <div class="comment-block">
+                  <div class="meta-info"><strong>录入人：</strong>{{ getRecorderName('毕业答辩成绩') }} &nbsp;|&nbsp;
+                    <strong>录入时间：</strong>{{ getRecordTime('毕业答辩成绩') }}
+                  </div>
+                  <div class="comment-text">{{ getComment('毕业答辩成绩') }}</div>
+                </div>
+              </div>
+
+              <div id="section-final" class="section">
+                <h4>答辩委员会评语及总评成绩</h4>
+                <el-table :data="[
+                  { item: '开题报告', weight: '12%', fullScore: 12, score: getScore('开题报告成绩') },
+                  { item: '外文翻译', weight: '3%', fullScore: 3, score: getScore('外文翻译') },
+                  { item: '中期检查', weight: '15%', fullScore: 15, score: getScore('中期检查成绩') },
+                  { item: '指导教师', weight: '15%', fullScore: 15, score: getScore('指导评语') },
+                  { item: '评阅教师', weight: '15%', fullScore: 15, score: getScore('评阅评语') },
+                  { item: '毕业答辩', weight: '40%', fullScore: 40, score: getScore('毕业答辩成绩') }
+                ]" border>
+                  <el-table-column prop="item" label="成绩评定项" width="180" />
+                  <el-table-column prop="weight" label="权重" width="100" />
+                  <el-table-column prop="fullScore" label="满分" width="100" />
+                  <el-table-column prop="score" label="得分" />
+                </el-table>
+                <div class="total-score-area">
+                  <div class="total-score-item">
+                    <span class="total-label">总分</span>
+                    <span class="total-score">{{ finalTotalScore }}</span>
+                  </div>
+                  <div class="total-score-item">
+                    <span class="total-label">评定等级</span>
+                    <span :class="['grade-tag', finalGrade]">{{ finalGrade }}</span>
+                  </div>
+                </div>
+                <div class="comment-block">
+                  <div class="meta-info"><strong>录入人：</strong>{{ getRecorderName('委员会评定') }} &nbsp;|&nbsp;
+                    <strong>录入时间：</strong>{{ getRecordTime('委员会评定') }}
+                  </div>
+                  <div class="comment-text">{{ getComment('委员会评定') }}</div>
+                </div>
+                <div class="note-text">
+                  备注：（1）等级评定：优，良，中，及格，不及格（2）有不合格二次重做或重答辩的一律为及格（3）二次重做或重答辩还有不合格的一律为不及格
+                </div>
               </div>
             </div>
 
-            <div id="section-progress" class="section">
-              <h4>评价任务进度</h4>
-              <div class="progress-horizontal">
-                <div v-for="item in progressItems" :key="item" class="progress-item" :class="getStatusType(item)">
-                  <el-tag :type="getStatusType(item)" size="small" class="progress-tag">
-                    {{ isCompleted(item) ? '已完成' : '未完成' }}
-                  </el-tag>
-                  <div class="progress-name">{{ item }}</div>
-                </div>
-              </div>
-            </div>
-
-            <div id="section-task" class="section">
-              <h4>任务书</h4>
-              <div class="doc-info-grid">
-                <div class="doc-info-item full-width">
-                  <span class="info-label">毕业设计（论文）题目：</span>
-                  <span class="info-value">{{ getDoc('任务书')?.title || '-' }}</span>
-                </div>
-                <div class="doc-info-item">
-                  <span class="info-label">课题类别：</span>
-                  <span class="info-value">{{ getCategoryLabel(getDoc('任务书')?.subjectCategory) }}</span>
-                </div>
-                <div class="doc-info-item">
-                  <span class="info-label">课题类型：</span>
-                  <span class="info-value">{{ getTypeLabel(getDoc('任务书')?.subjectType) }}</span>
-                </div>
-                <div class="doc-info-item">
-                  <span class="info-label">新旧课题：</span>
-                  <span class="info-value">{{ getNewOldLabel(getDoc('任务书')?.subjectNewOld) }}</span>
-                </div>
-              </div>
-              <div v-if="getDoc('任务书')?.content" class="doc-content">
-                <div class="content-section">
-                  <h5 class="content-title">课题研究的主要内容</h5>
-                  <div class="content-text">{{ getTaskContentParts().mainContent }}</div>
-                </div>
-                <div v-if="getTaskContentParts().basicRequirement" class="content-section" style="margin-top: 16px;">
-                  <h5 class="content-title">基本要求</h5>
-                  <div class="content-text">{{ getTaskContentParts().basicRequirement }}</div>
-                </div>
-              </div>
-              <div v-else class="empty-hint">暂无任务书内容</div>
-            </div>
-
-            <div id="section-guide" class="section">
-              <h4>指导书</h4>
-              <div v-if="getDoc('指导书')?.content" class="doc-content">
-                <div class="content-text">{{ getDoc('指导书').content }}</div>
-              </div>
-              <div v-else class="empty-hint">暂无指导书内容</div>
-            </div>
-
-            <div id="section-opening" class="section">
-              <h4>开题报告成绩</h4>
-              <el-table :data="[{
-                name: '得分',
-                item1: getSubScoreDisplay('开题成绩', 0),
-                item2: getSubScoreDisplay('开题成绩', 1),
-                item3: getSubScoreDisplay('开题成绩', 2),
-                total: getScore('开题成绩')
-              }, {
-                name: '满分',
-                item1: 20,
-                item2: 20,
-                item3: 60,
-                total: 100
-              }]" border>
-                <el-table-column prop="name" label="" width="80" />
-                <el-table-column prop="item1" label="选题质量" />
-                <el-table-column prop="item2" label="文献调研" />
-                <el-table-column prop="item3" label="开题报告" />
-                <el-table-column prop="total" label="总成绩" width="100" />
-              </el-table>
-              <div class="comment-block">
-                <div class="meta-info"><strong>录入人：</strong>{{ getRecorderName('开题成绩') }} &nbsp;|&nbsp;
-                  <strong>录入时间：</strong>{{ getRecordTime('开题成绩') }}
-                </div>
-                <div class="comment-text">{{ getComment('开题成绩') }}</div>
-              </div>
-            </div>
-
-            <div id="section-translation" class="section">
-              <h4>外文翻译成绩</h4>
-              <el-table :data="[{
-                name: '得分',
-                item1: getSubScoreDisplay('外文翻译', 0),
-                total: getScore('外文翻译')
-              }, {
-                name: '满分',
-                item1: 100,
-                total: 100
-              }]" border>
-                <el-table-column prop="name" label="" width="80" />
-                <el-table-column prop="item1" label="翻译质量" />
-                <el-table-column prop="total" label="总成绩" width="100" />
-              </el-table>
-              <div class="comment-block">
-                <div class="meta-info"><strong>录入人：</strong>{{ getRecorderName('外文翻译') }} &nbsp;|&nbsp;
-                  <strong>录入时间：</strong>{{ getRecordTime('外文翻译') }}
-                </div>
-                <div class="comment-text">{{ getComment('外文翻译') }}</div>
-              </div>
-            </div>
-
-            <div id="section-midterm" class="section">
-              <h4>中期检查评语及成绩</h4>
-              <el-table :data="[{
-                name: '得分',
-                item1: getSubScoreDisplay('中期检查', 0),
-                item2: getSubScoreDisplay('中期检查', 1),
-                item3: getSubScoreDisplay('中期检查', 2),
-                total: getScore('中期检查')
-              }, {
-                name: '满分',
-                item1: 40,
-                item2: 40,
-                item3: 20,
-                total: 100
-              }]" border>
-                <el-table-column prop="name" label="" width="80" />
-                <el-table-column prop="item1" label="进度完成" />
-                <el-table-column prop="item2" label="工作质量" />
-                <el-table-column prop="item3" label="工作态度" />
-                <el-table-column prop="total" label="总成绩" width="100" />
-              </el-table>
-              <div class="comment-block">
-                <div class="meta-info"><strong>录入人：</strong>{{ getRecorderName('中期检查') }} &nbsp;|&nbsp;
-                  <strong>录入时间：</strong>{{ getRecordTime('中期检查') }}
-                </div>
-                <div class="comment-text">{{ getComment('中期检查') }}</div>
-              </div>
-            </div>
-
-            <div id="section-supervisor" class="section">
-              <h4>指导老师评语及建议成绩</h4>
-              <el-table :data="[{
-                name: '得分',
-                item1: getSubScoreDisplay('指导评语', 0),
-                item2: getSubScoreDisplay('指导评语', 1),
-                item3: getSubScoreDisplay('指导评语', 2),
-                total: getScore('指导评语')
-              }, {
-                name: '满分',
-                item1: 20,
-                item2: 50,
-                item3: 30,
-                total: 100
-              }]" border>
-                <el-table-column prop="name" label="" width="80" />
-                <el-table-column prop="item1" label="学习态度" />
-                <el-table-column prop="item2" label="能力水平" />
-                <el-table-column prop="item3" label="完成质量" />
-                <el-table-column prop="total" label="总成绩" width="90" />
-              </el-table>
-              <div class="comment-block">
-                <div class="meta-info"><strong>指导老师：</strong>{{ getRecorderName('指导评语') }} &nbsp;|&nbsp;
-                  <strong>录入时间：</strong>{{ getRecordTime('指导评语') }}
-                </div>
-                <div class="comment-text">{{ getComment('指导评语') }}</div>
-              </div>
-            </div>
-
-            <div id="section-reviewer" class="section">
-              <h4>评阅教师评分及评语</h4>
-              <el-table :data="[{
-                name: '得分',
-                item1: getSubScoreDisplay('评阅评语', 0),
-                item2: getSubScoreDisplay('评阅评语', 1),
-                item3: getSubScoreDisplay('评阅评语', 2),
-                total: getScore('评阅评语')
-              }, {
-                name: '满分',
-                item1: 15,
-                item2: 45,
-                item3: 40,
-                total: 100
-              }]" border>
-                <el-table-column prop="name" label="" width="80" />
-                <el-table-column prop="item1" label="选题质量" />
-                <el-table-column prop="item2" label="能力水平" />
-                <el-table-column prop="item3" label="成果质量" />
-                <el-table-column prop="total" label="总成绩" width="90" />
-              </el-table>
-              <div class="comment-block">
-                <div class="meta-info"><strong>评阅老师：</strong>{{ getRecorderName('评阅评语') }} &nbsp;|&nbsp;
-                  <strong>录入时间：</strong>{{ getRecordTime('评阅评语') }}
-                </div>
-                <div class="comment-text">{{ getComment('评阅评语') }}</div>
-              </div>
-            </div>
-
-            <div id="section-defense-record" class="section">
-              <h4>答辩记录</h4>
-              <div class="meta-info"><strong>记录人：</strong>{{ getRecorderName('答辩记录') }} &nbsp;|&nbsp;
-                <strong>答辩日期：</strong>{{ getRecordTime('答辩记录') }}
-              </div>
-              <div class="comment-block">
-                <div class="comment-text">{{ getComment('答辩记录') }}</div>
-              </div>
-            </div>
-
-            <div id="section-defense-score" class="section">
-              <h4>答辩小组评定成绩</h4>
-              <el-table :data="[{
-                name: '得分',
-                item1: getSubScoreDisplay('答辩成绩', 0),
-                item2: getSubScoreDisplay('答辩成绩', 1),
-                item3: getSubScoreDisplay('答辩成绩', 2),
-                total: getScore('答辩成绩')
-              }, {
-                name: '满分',
-                item1: 35,
-                item2: 35,
-                item3: 30,
-                total: 100
-              }]" border>
-                <el-table-column prop="name" label="" width="80" />
-                <el-table-column prop="item1" label="报告内容" />
-                <el-table-column prop="item2" label="答辩过程" />
-                <el-table-column prop="item3" label="答辩小组" />
-                <el-table-column prop="total" label="答辩成绩" width="100" />
-              </el-table>
-              <div class="comment-block">
-                <div class="meta-info"><strong>录入人：</strong>{{ getRecorderName('答辩成绩') }} &nbsp;|&nbsp;
-                  <strong>录入时间：</strong>{{ getRecordTime('答辩成绩') }}
-                </div>
-                <div class="comment-text">{{ getComment('答辩成绩') }}</div>
-              </div>
-            </div>
-
-            <div id="section-final" class="section">
-              <h4>答辩委员会评语及总评成绩</h4>
-              <el-table :data="[
-                { item: '开题报告', weight: '12%', score: getScore('开题成绩') },
-                { item: '英文翻译', weight: '3%', score: getScore('外文翻译') },
-                { item: '中期检查', weight: '15%', score: getScore('中期检查') },
-                { item: '指导教师', weight: '15%', score: getScore('指导评语') },
-                { item: '评阅教师', weight: '15%', score: getScore('评阅评语') },
-                { item: '答辩', weight: '40%', score: getScore('答辩成绩') }
-              ]" border>
-                <el-table-column prop="item" label="成绩评定项" width="180" />
-                <el-table-column prop="weight" label="权重" width="100" />
-                <el-table-column prop="score" label="得分" />
-              </el-table>
-              <div class="total-score-area">
-                <div class="total-score-item">
-                  <span class="total-label">总分</span>
-                  <span class="total-score">{{ finalTotalScore }}</span>
-                </div>
-                <div class="total-score-item">
-                  <span class="total-label">评定等级</span>
-                  <span :class="['grade-tag', finalGrade]">{{ finalGrade }}</span>
-                </div>
-              </div>
-              <div class="comment-block">
-                <div class="meta-info"><strong>录入人：</strong>{{ getRecorderName('委员会评定') }} &nbsp;|&nbsp;
-                  <strong>录入时间：</strong>{{ getRecordTime('委员会评定') }}
-                </div>
-                <div class="comment-text">{{ getComment('委员会评定') }}</div>
-              </div>
-              <div class="note-text">
-                备注：（1）等级评定：优，良，中，及格，不及格（2）有不合格二次重做或重答辩的一律为及格（3）二次重做或重答辩还有不合格的一律为不及格
+            <div class="float-nav">
+              <div v-for="item in navItems" :key="item.id" class="nav-item"
+                :class="{ active: activeSection === item.id }" @click="scrollToSection(item.id)">
+                {{ item.label }}
               </div>
             </div>
           </div>
           <div v-else class="empty-select">
             <span>请选择左侧学生查看详情</span>
-          </div>
-
-          <div v-if="selectedStudent" class="float-nav">
-            <div v-for="item in navItems" :key="item.id" class="nav-item" :class="{ active: activeSection === item.id }"
-              @click="scrollToSection(item.id)">
-              {{ item.label }}
-            </div>
           </div>
         </el-col>
       </el-row>
@@ -667,6 +703,13 @@ onMounted(fetchStudents)
   margin-top: 16px;
 }
 
+.empty-card {
+  height: calc(100vh - 150px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .student-list-header {
   margin-bottom: 12px;
 }
@@ -674,6 +717,11 @@ onMounted(fetchStudents)
 .left-col {
   display: flex;
   flex-direction: column;
+  height: calc(100vh - 220px);
+}
+
+.right-col {
+  padding-left: 16px;
   height: calc(100vh - 220px);
 }
 
@@ -731,11 +779,18 @@ onMounted(fetchStudents)
   margin-top: 4px;
 }
 
-.detail-panel {
-  position: relative;
+.detail-wrapper {
+  display: flex;
+  gap: 16px;
   height: calc(100vh - 220px);
+}
+
+.detail-panel {
+  flex: 1;
+  position: relative;
+  height: 100%;
   overflow-y: auto;
-  padding-right: 120px;
+  padding-right: 0;
 }
 
 .detail-header {
@@ -995,15 +1050,14 @@ onMounted(fetchStudents)
 }
 
 .float-nav {
-  position: fixed;
-  right: 65px;
-  top: 180px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  position: sticky;
+  top: 0;
   background: #fff;
   border: 1px solid #e4e7ed;
   border-radius: 8px;
- /* box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);*/
   padding: 8px 0;
-  z-index: 100;
   min-width: 100px;
 }
 

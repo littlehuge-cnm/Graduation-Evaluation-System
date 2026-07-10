@@ -38,6 +38,11 @@ public class ScoreRecordDTO {
     private String comment;
 
     /**
+     * 答辩记录
+     */
+    private String defenseRecord;
+
+    /**
      * 记录状态：1=暂存（默认）/2=已确认
      */
     private Integer recordStatus;

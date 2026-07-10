@@ -255,15 +255,18 @@ onMounted(fetchStudents)
 </script>
 
 <template>
-  <div>
+  <div v-loading="loading">
     <el-page-header title="任务书/指导书填写" />
-    <el-card class="table-card">
+    <el-card v-if="!loading && students.length === 0" class="table-card empty-card">
+      <el-empty description="您没有需要填写任务书/指导书的学生" />
+    </el-card>
+    <el-card v-else class="table-card">
       <el-row :gutter="16">
         <el-col :span="5" class="left-col">
           <div class="student-list-header">
             <el-input v-model="keyword" placeholder="搜索学号/姓名" clearable @input="filterStudents" />
           </div>
-          <div v-loading="loading" class="student-list">
+          <div class="student-list">
             <div v-for="student in filteredStudents" :key="student.studentNo" class="student-item"
               :class="{ active: selectedStudent?.studentNo === student.studentNo }"
               @click="handleSelectStudent(student)">
@@ -275,11 +278,11 @@ onMounted(fetchStudents)
               </div>
               <div class="student-no">{{ student.studentNo }}</div>
             </div>
-            <el-empty v-if="!filteredStudents.length" description="暂无学生" />
+            <el-empty v-if="!filteredStudents.length" description="暂无匹配学生" />
           </div>
         </el-col>
-        <el-col :span="19">
-          <div v-if="selectedStudent" v-loading="loading" class="detail-panel">
+        <el-col :span="19" class="right-col">
+          <div v-if="selectedStudent" class="detail-panel">
             <div class="detail-header">
               <h3>{{ selectedStudent.studentName }}（{{ selectedStudent.studentNo }}）</h3>
               <div class="header-info" style="margin-top: 8px;">
@@ -349,6 +352,13 @@ onMounted(fetchStudents)
   margin-top: 16px;
 }
 
+.empty-card {
+  height: calc(100vh - 150px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .student-list-header {
   margin-bottom: 12px;
 }
@@ -356,6 +366,11 @@ onMounted(fetchStudents)
 .left-col {
   display: flex;
   flex-direction: column;
+  height: calc(100vh - 220px);
+}
+
+.right-col {
+  padding-left: 16px;
   height: calc(100vh - 220px);
 }
 

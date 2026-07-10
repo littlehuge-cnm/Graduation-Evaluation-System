@@ -24,29 +24,32 @@ public interface ScoreRecordService extends IService<ScoreRecord> {
      * @param subScores     分项成绩（逗号分隔）
      * @param score         总成绩（为 null 时按分项求和）
      * @param grade         等级
-     * @param comment       评语/记录内容
+     * @param comment       评语
+     * @param defenseRecord 答辩记录
      * @param recordStatus  记录状态（为 null 时默认 1=暂存）
      * @param recorderNo    录入人账号
      * @return 记录编号
      */
     Integer createRecord(String studentNo, String itemType, String subScores,
-                         BigDecimal score, String grade, String comment,
-                         Integer recordStatus, String recorderNo);
+            BigDecimal score, String grade, String comment,
+            String defenseRecord, Integer recordStatus, String recorderNo);
 
     /**
      * 修改评价记录
      * <p>
-     * 仅暂存状态可修改；已确认需先解锁。
+     * 仅暂存状态可修改；已确认需先解锁。支持部分字段更新。
      *
      * @param id            记录编号
-     * @param subScores     分项成绩
-     * @param score         总成绩
-     * @param grade         等级
-     * @param comment       评语/记录内容
-     * @param recordStatus  记录状态
+     * @param subScores     分项成绩（为null则不更新）
+     * @param score         总成绩（为null则不更新）
+     * @param grade         等级（为null则不更新）
+     * @param comment       评语（为null则不更新）
+     * @param defenseRecord 答辩记录（为null则不更新）
+     * @param recordStatus  记录状态（为null则不更新）
      */
     void updateRecord(Integer id, String subScores, BigDecimal score,
-                      String grade, String comment, Integer recordStatus);
+            String grade, String comment, String defenseRecord,
+            Integer recordStatus);
 
     /**
      * 确认评价记录（暂存→已确认，锁定不可改）

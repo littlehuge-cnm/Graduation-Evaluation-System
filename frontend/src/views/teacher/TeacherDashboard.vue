@@ -42,9 +42,9 @@ const quickLinks = computed(() => {
     links.push({ name: '评阅教师评定', icon: Medal, path: '/teacher/review/comment', color: '#f56c6c' })
   }
   if (userStore.identities.includes('组长')) {
-    links.push({ name: '开题答辩评定', icon: Connection, path: '/teacher/group/opening', color: '#409eff' })
+    links.push({ name: '开题报告评定', icon: Connection, path: '/teacher/group/opening', color: '#409eff' })
     links.push({ name: '中期检查评定', icon: Timer, path: '/teacher/group/midterm', color: '#b37feb' })
-    links.push({ name: '最终答辩评定', icon: Medal, path: '/teacher/group/defense', color: '#ff7a45' })
+    links.push({ name: '毕业答辩评定', icon: Medal, path: '/teacher/group/defense', color: '#ff7a45' })
   }
   links.unshift({ name: '个人信息', icon: User, path: '/teacher/profile', color: '#909399' })
   return links
@@ -157,7 +157,8 @@ onMounted(() => {
             <p>根据您的身份，可使用以下功能：</p>
             <ul>
               <li v-if="userStore.identities.includes('指导教师')">
-                <strong>指导教师：</strong>填写任务书/指导书，评定外文翻译成绩，填写指导评语，查看指导学生评价手册</li>
+                <strong>指导教师：</strong>填写任务书/指导书，评定外文翻译成绩，填写指导评语，查看指导学生评价手册
+              </li>
               <li v-if="userStore.identities.includes('评阅教师')"><strong>评阅教师：</strong>填写评阅评语和成绩</li>
               <li v-if="userStore.identities.includes('组长')"><strong>组长：</strong>组织开题、中期、答辩环节，评定小组成绩，确认最终成绩</li>
               <li v-if="userStore.identities.includes('秘书')"><strong>秘书：</strong>录入答辩记录</li>
@@ -201,7 +202,7 @@ onMounted(() => {
 
 .stats-row {
   margin-bottom: 20px;
-  
+
 }
 
 .stat-card {
