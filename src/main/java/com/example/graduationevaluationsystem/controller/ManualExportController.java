@@ -12,6 +12,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * 评价手册导出 Controller
  */
@@ -43,5 +45,11 @@ public class ManualExportController {
     public void exportByGroup(@Valid @RequestBody GroupExportDTO dto,
                               HttpServletResponse response) {
         manualExportService.exportByGroup(dto.getStudentGroupId(), response);
+    }
+
+    @GetMapping("/preview")
+    @Operation(summary = "预览评价手册", description = "返回占位符->值 的映射，前端渲染预览")
+    public Result<Map<String, String>> preview(@Parameter(description = "学号") @RequestParam String studentNo) {
+        return Result.success(manualExportService.getPreviewData(studentNo));
     }
 }

@@ -6,6 +6,17 @@ import lombok.Getter;
 /**
  * 学生整体进度状态（t_student）
  */
+/**
+ * 待开始
+ * 分组完成
+ * 分配完成
+ * 开题检查完成
+ * 中期检查完成
+ * 指导教师已评价
+ * 评阅教师已评阅
+ * 答辩完成
+ * 委员会已评定
+ */
 @Getter
 @AllArgsConstructor
 public enum OverallStatus {

@@ -18,3 +18,9 @@ export function exportManualByGroup(studentGroupId) {
     responseType: 'blob'
   })
 }
+
+export function previewManual(studentNo) {
+  return request.get('/manual-export/preview', {
+    params: { studentNo }
+  })
+}

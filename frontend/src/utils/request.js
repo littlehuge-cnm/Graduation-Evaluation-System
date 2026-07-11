@@ -22,7 +22,7 @@ request.interceptors.request.use(
 request.interceptors.response.use(
     (response) => {
         if (response.config.responseType === 'blob') {
-            return response
+            return response.data
         }
         const { code, message, data } = response.data
         if (code !== 200) {
