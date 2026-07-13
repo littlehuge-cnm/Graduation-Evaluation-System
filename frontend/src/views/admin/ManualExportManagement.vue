@@ -76,7 +76,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <el-page-header title="评价手册导出" />
+    <el-page-header title="评价手册导出" :icon="null" />
     <el-card class="table-card">
       <el-tabs v-model="activeTab" type="border-card">
         <el-tab-pane label="批量导出" name="batch">

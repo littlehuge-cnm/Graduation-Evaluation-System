@@ -188,7 +188,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <el-page-header title="学生管理" />
+    <el-page-header title="学生管理" :icon="null" />
     <el-card class="table-card">
       <template #header>
         <div class="card-header">

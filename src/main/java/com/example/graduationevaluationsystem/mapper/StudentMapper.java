@@ -25,8 +25,9 @@ public interface StudentMapper extends BaseMapper<Student> {
             FROM t_teacher_student ts
             INNER JOIN t_teacher t ON ts.teacher_no = t.teacher_no
             WHERE ts.student_no = #{studentNo}
-              AND ts.relation_status = 1
               AND ts.relation_type = #{relationType}
+              AND ts.relation_status != 2
+            ORDER BY ts.relation_status DESC, ts.id DESC
             LIMIT 1
             """)
     TeacherBriefVO selectTeacherByStudentNo(@Param("studentNo") String studentNo,

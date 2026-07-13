@@ -91,7 +91,9 @@ const teacherMenus = [
 ]
 
 const studentMenus = [
-  { index: '/student/dashboard', title: '我的毕业设计', icon: User }
+  { index: '/student/dashboard', title: '控制台', icon: Reading },
+  { index: '/student/profile', title: '个人信息', icon: User },
+  { index: '/student/manual', title: '评价手册', icon: Document }
 ]
 
 const menus = computed(() => {

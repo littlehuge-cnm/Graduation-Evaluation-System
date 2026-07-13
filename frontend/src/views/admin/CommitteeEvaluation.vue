@@ -172,7 +172,7 @@ onMounted(() => {
 
 <template>
   <div v-loading="loading">
-    <el-page-header title="答辩委员会评定" />
+    <el-page-header title="答辩委员会评定" :icon="null" />
     <el-card class="table-card">
       <el-row :gutter="16">
         <el-col :span="5" class="left-col">

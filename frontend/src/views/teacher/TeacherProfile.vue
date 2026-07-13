@@ -235,7 +235,7 @@ onMounted(() => {
 
 <template>
   <div v-loading="loading">
-    <el-page-header title="个人信息" />
+    <el-page-header title="个人信息" :icon="null" />
 
     <el-card class="info-card">
       <template #header>

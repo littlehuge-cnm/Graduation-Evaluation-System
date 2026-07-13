@@ -350,7 +350,7 @@ onMounted(() => {
 <template>
   <div v-loading="loading">
     <div class="page-header-wrapper">
-      <el-page-header :title="PAGE_TITLE" />
+      <el-page-header :title="PAGE_TITLE" :icon="null" />
       <div v-if="currentTeacherGroup" class="group-info-header">
         <span class="group-label">教师组：</span>
         <span class="group-name-text">{{ currentTeacherGroup.groupName }}</span>

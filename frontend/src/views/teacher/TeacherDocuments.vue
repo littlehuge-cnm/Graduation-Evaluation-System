@@ -256,7 +256,7 @@ onMounted(fetchStudents)
 
 <template>
   <div v-loading="loading">
-    <el-page-header title="任务书/指导书填写" />
+    <el-page-header title="任务书/指导书填写" :icon="null" />
     <el-card v-if="!loading && students.length === 0" class="table-card empty-card">
       <el-empty description="您没有需要填写任务书/指导书的学生" />
     </el-card>

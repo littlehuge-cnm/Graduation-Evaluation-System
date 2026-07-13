@@ -45,7 +45,7 @@ onMounted(fetchData)
 
 <template>
   <div>
-    <el-page-header title="评价手册导出" />
+    <el-page-header title="评价手册导出" :icon="null" />
     <el-card class="table-card">
       <template #header>
         <span>可导出的学生列表</span>

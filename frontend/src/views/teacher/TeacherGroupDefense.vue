@@ -125,9 +125,10 @@ function formatDate(dateTime) {
 }
 
 function getItemStatus(recordList) {
-  const record = recordList.find(r => r.itemType === ITEM_TYPE)
-  const hasScore = record && record.score !== null && record.score !== undefined
-  const hasRecord = record && record.defenseRecord
+  const scoreRecord = recordList.find(r => r.itemType === ITEM_TYPE)
+  const defenseRecord = recordList.find(r => r.itemType === '答辩记录')
+  const hasScore = scoreRecord && scoreRecord.score !== null && scoreRecord.score !== undefined
+  const hasRecord = defenseRecord && defenseRecord.defenseRecord
   if (hasScore && hasRecord) {
     return { status: '已录入', type: 'success', order: 2 }
   }
@@ -369,13 +370,6 @@ async function handleSaveScore() {
   data.subScores = form.subScores.join(',')
   data.comment = form.comment
 
-  if (form.recordId) {
-    const existingRecord = records.value.find(r => r.itemType === ITEM_TYPE)
-    if (existingRecord && existingRecord.defenseRecord) {
-      data.defenseRecord = existingRecord.defenseRecord
-    }
-  }
-
   try {
     if (form.recordId) {
       await updateScoreRecord(form.recordId, data)
@@ -441,7 +435,7 @@ onMounted(() => {
 <template>
   <div v-loading="loading">
     <div class="page-header-wrapper">
-      <el-page-header :title="PAGE_TITLE" />
+      <el-page-header :title="PAGE_TITLE" :icon="null" />
       <div v-if="currentTeacherGroup" class="group-info-header">
         <span class="group-label">教师组：</span>
         <span class="group-name-text">{{ currentTeacherGroup.groupName }}</span>

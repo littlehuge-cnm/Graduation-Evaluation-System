@@ -103,7 +103,7 @@ onMounted(() => {
 
 <template>
   <div class="dashboard-container" v-loading="loading">
-    <el-page-header title="控制台" />
+    <el-page-header title="控制台" :icon="null" />
 
     <div class="welcome-section">
       <div class="welcome-text">

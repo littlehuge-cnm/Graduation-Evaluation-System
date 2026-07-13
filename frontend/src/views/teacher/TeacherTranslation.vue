@@ -189,7 +189,7 @@ onMounted(() => {
 
 <template>
   <div v-loading="loading">
-    <el-page-header title="外文翻译评定" />
+    <el-page-header title="外文翻译评定" :icon="null" />
     <el-card v-if="!loading && students.length === 0" class="table-card empty-card">
       <el-empty description="您没有需要评定外文翻译的学生" />
     </el-card>

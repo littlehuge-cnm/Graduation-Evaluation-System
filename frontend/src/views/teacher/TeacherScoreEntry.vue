@@ -126,7 +126,7 @@ onMounted(fetchData)
 
 <template>
   <div>
-    <el-page-header title="成绩/评语录入" />
+    <el-page-header title="成绩/评语录入" :icon="null" />
     <el-card class="table-card">
       <template #header>
         <div class="card-header">

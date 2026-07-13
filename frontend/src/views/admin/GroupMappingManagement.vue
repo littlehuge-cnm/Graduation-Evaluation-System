@@ -317,7 +317,7 @@ watch([currentPage, pageSize], () => {
 
 <template>
   <div>
-    <el-page-header title="环节分配" />
+    <el-page-header title="环节分配" :icon="null" />
     <el-card class="table-card">
       <template #header>
         <div class="card-header">

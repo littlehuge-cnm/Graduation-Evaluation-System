@@ -6,6 +6,8 @@ import AdminDashboard from '@/views/admin/AdminDashboard.vue'
 import TeacherDashboard from '@/views/teacher/TeacherDashboard.vue'
 import TeacherProfile from '@/views/teacher/TeacherProfile.vue'
 import StudentDashboard from '@/views/student/StudentDashboard.vue'
+import StudentProfile from '@/views/student/StudentProfile.vue'
+import StudentManual from '@/views/student/StudentManual.vue'
 import TeacherDocuments from '@/views/teacher/TeacherDocuments.vue'
 import TeacherScoreEntry from '@/views/teacher/TeacherScoreEntry.vue'
 import TeacherManualExport from '@/views/teacher/TeacherManualExport.vue'
@@ -186,6 +188,18 @@ const routes = [
         path: 'student/dashboard',
         name: 'StudentDashboard',
         component: StudentDashboard,
+        meta: { roles: ['student'] }
+      },
+      {
+        path: 'student/profile',
+        name: 'StudentProfile',
+        component: StudentProfile,
+        meta: { roles: ['student'] }
+      },
+      {
+        path: 'student/manual',
+        name: 'StudentManual',
+        component: StudentManual,
         meta: { roles: ['student'] }
       }
     ]

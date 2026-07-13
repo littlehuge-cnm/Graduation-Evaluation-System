@@ -4,6 +4,8 @@ import { ElMessage } from 'element-plus'
 import { getStudentList, getStudentTeachers, getStudentDocuments } from '@/api/student.js'
 import { getScoreRecordList } from '@/api/scoreRecord.js'
 import { getStudentGroupList } from '@/api/studentGroup.js'
+import { getGroupMappingList } from '@/api/groupMapping.js'
+import { getTeacherGroupById } from '@/api/teacherGroup.js'
 
 const loading = ref(false)
 const students = ref([])
@@ -30,6 +32,8 @@ const newOldMap = {
 const records = ref([])
 const teachers = ref(null)
 const documents = ref([])
+const groupMappings = ref([])
+const teacherGroups = ref({})
 const activeSection = ref('')
 
 const navItems = [
@@ -109,6 +113,49 @@ function getDoc(docType) {
   return documents.value.find(d => d.docType === docType)
 }
 
+async function fetchGroupMappings() {
+  try {
+    const mappings = await getGroupMappingList()
+    groupMappings.value = mappings || []
+
+    const groupIds = [...new Set((mappings || []).map(m => m.teacherGroupId))]
+    for (const groupId of groupIds) {
+      if (!teacherGroups.value[groupId]) {
+        try {
+          const group = await getTeacherGroupById(groupId)
+          if (group) {
+            teacherGroups.value[groupId] = group
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+  } catch (error) {
+    console.error('获取分组映射失败', error)
+  }
+}
+
+function getStageTeacherGroup(stage) {
+  if (!selectedStudent.value?.studentGroupId) return null
+  const mapping = groupMappings.value.find(m =>
+    m.studentGroupId === selectedStudent.value.studentGroupId &&
+    m.stage === stage
+  )
+  return mapping ? teacherGroups.value[mapping.teacherGroupId] : null
+}
+
+function getStageMembersText(stage) {
+  const group = getStageTeacherGroup(stage)
+  if (!group) return '-'
+  const members = [
+    group.leaderName ? `${group.leaderName}（组长）` : '',
+    group.secretaryName ? `${group.secretaryName}（秘书）` : '',
+    group.memberName ? `${group.memberName}（组员）` : ''
+  ].filter(Boolean)
+  return members.join('、') || '-'
+}
+
 function getTaskContentParts() {
   const doc = getDoc('任务书')
   if (!doc?.content) return { mainContent: '', basicRequirement: '' }
@@ -139,7 +186,12 @@ function isCompleted(itemType) {
   if (itemType === '任务书' || itemType === '指导书') {
     return !!getDoc(itemType)?.content
   }
-  return !!recordMap.value[itemType]?.score || !!recordMap.value[itemType]?.comment
+  const record = recordMap.value[itemType]
+  if (!record) return false
+  if (itemType === '答辩记录') {
+    return !!record.defenseRecord
+  }
+  return !!record.score || !!record.comment
 }
 
 function getStatusType(itemType) {
@@ -195,7 +247,7 @@ async function handleSelectStudent(student) {
       getStudentDocuments(student.studentNo)
     ])
     records.value = recordRes || []
-    teachers.value = teacherRes || null
+    teachers.value = teacherRes || { supervisor: null, reviewer: null }
     documents.value = docRes || []
     nextTick(() => {
       activeSection.value = 'section-progress'
@@ -233,12 +285,15 @@ const progressItems = [
   { label: '总评成绩', type: '委员会评定' }
 ]
 
-onMounted(fetchStudents)
+onMounted(() => {
+  fetchStudents()
+  fetchGroupMappings()
+})
 </script>
 
 <template>
   <div>
-    <el-page-header title="评价手册查看" />
+    <el-page-header title="评价手册查看" :icon="null" />
     <el-card class="table-card">
       <el-row :gutter="16">
         <el-col :span="5">
@@ -267,8 +322,8 @@ onMounted(fetchStudents)
                 </div>
                 <div class="header-info">
                   <span>学生组：{{ groupNameMap[selectedStudent.studentGroupId] || '未分组' }}</span>
-                  <span v-if="teachers">指导教师：{{ teachers.supervisorName || '-' }}</span>
-                  <span v-if="teachers">评阅教师：{{ teachers.reviewerName || '-' }}</span>
+                  <span>指导教师：{{ teachers?.supervisor?.teacherName || '-' }}</span>
+                  <span>评阅教师：{{ teachers?.reviewer?.teacherName || '-' }}</span>
                 </div>
               </div>
 
@@ -328,6 +383,12 @@ onMounted(fetchStudents)
 
               <div id="section-opening" class="section">
                 <h4>开题报告成绩</h4>
+                <div class="meta-info"
+                  style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ebeef5;">
+                  <strong>评定教师组：</strong>{{ getStageTeacherGroup('开题')?.groupName || '未分配' }}
+                  &nbsp;|&nbsp;
+                  <strong>组员：</strong>{{ getStageMembersText('开题') }}
+                </div>
                 <el-table :data="[{
                   name: '得分',
                   item1: getSubScoreDisplay('开题报告成绩', 0),
@@ -386,6 +447,12 @@ onMounted(fetchStudents)
 
               <div id="section-midterm" class="section">
                 <h4>中期检查评语及成绩</h4>
+                <div class="meta-info"
+                  style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ebeef5;">
+                  <strong>评定教师组：</strong>{{ getStageTeacherGroup('中期')?.groupName || '未分配' }}
+                  &nbsp;|&nbsp;
+                  <strong>组员：</strong>{{ getStageMembersText('中期') }}
+                </div>
                 <el-table :data="[{
                   name: '得分',
                   item1: getSubScoreDisplay('中期检查成绩', 0),
@@ -492,6 +559,12 @@ onMounted(fetchStudents)
 
               <div id="section-defense-score" class="section">
                 <h4>毕业答辩小组评定成绩</h4>
+                <div class="meta-info"
+                  style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ebeef5;">
+                  <strong>答辩教师组：</strong>{{ getStageTeacherGroup('答辩')?.groupName || '未分配' }}
+                  &nbsp;|&nbsp;
+                  <strong>组员：</strong>{{ getStageMembersText('答辩') }}
+                </div>
                 <el-table :data="[{
                   name: '得分',
                   item1: getSubScoreDisplay('毕业答辩成绩', 0),
@@ -559,8 +632,8 @@ onMounted(fetchStudents)
               </div>
             </div>
             <div class="float-nav">
-              <div v-for="item in navItems" :key="item.id" class="nav-item" :class="{ active: activeSection === item.id }"
-                @click="scrollToSection(item.id)">
+              <div v-for="item in navItems" :key="item.id" class="nav-item"
+                :class="{ active: activeSection === item.id }" @click="scrollToSection(item.id)">
                 {{ item.label }}
               </div>
             </div>
@@ -569,8 +642,8 @@ onMounted(fetchStudents)
             <span>请选择左侧学生查看详情</span>
           </div>
         </el-col>
-  </el-row>
-  </el-card>
+      </el-row>
+    </el-card>
   </div>
 </template>
 

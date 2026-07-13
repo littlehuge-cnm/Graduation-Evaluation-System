@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { WarningFilled } from '@element-plus/icons-vue'
+import { WarningFilled, Unlock } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user.js'
 import { getStudentList, getStudentTeachers } from '@/api/student.js'
 import { getScoreRecordList, addScoreRecord, updateScoreRecord } from '@/api/scoreRecord.js'
@@ -24,7 +24,12 @@ const form = reactive({
   comment: ''
 })
 
-const canEditScore = ref(true)
+const canEditScore = ref(false)
+
+function unlockEdit() {
+  canEditScore.value = true
+  ElMessage.info('已解锁手动修改权限，请谨慎调整总评成绩和等级')
+}
 
 const gradeOptions = ['优', '良', '中', '及格', '不及格']
 
@@ -156,9 +161,9 @@ const calculatedTotal = computed(() => {
   let total = 0
   for (const item of scoreItems) {
     const score = getScore(item.key)
-    total += score * item.weight
+    total += Number(score) || 0
   }
-  return Number(total.toFixed(2))
+  return Math.round(total)
 })
 
 function getAutoGrade(score) {
@@ -170,10 +175,10 @@ function getAutoGrade(score) {
 }
 
 watch(calculatedTotal, (newVal) => {
-  if (newVal !== null) {
+  if (!canEditScore.value && newVal !== null) {
     form.score = newVal
     form.grade = getAutoGrade(newVal)
-  } else {
+  } else if (!canEditScore.value && newVal === null) {
     form.score = null
     form.grade = ''
   }
@@ -244,6 +249,7 @@ async function handleSelectStudent(student) {
   form.score = null
   form.grade = ''
   form.comment = ''
+  canEditScore.value = false
   loading.value = true
   try {
     const [recordRes, teacherRes] = await Promise.all([
@@ -281,6 +287,10 @@ async function handleSubmit() {
     ElMessage.warning('请选择评定等级')
     return
   }
+  if (!form.comment || !form.comment.trim()) {
+    ElMessage.warning('请填写答辩委员会评语')
+    return
+  }
   try {
     const data = {
       studentNo: selectedStudent.value.studentNo,
@@ -310,7 +320,7 @@ onMounted(fetchStudents)
 
 <template>
   <div>
-    <el-page-header title="答辩委员会评定" />
+    <el-page-header title="答辩委员会评定" :icon="null" />
     <el-card class="table-card">
       <el-row :gutter="16">
         <el-col :span="5">
@@ -344,8 +354,8 @@ onMounted(fetchStudents)
               </div>
               <div class="header-info">
                 <span>学生组：{{ groupNameMap[selectedStudent.studentGroupId] || '未分组' }}</span>
-                <span v-if="teachers">指导教师：{{ teachers.supervisorName || '-' }}</span>
-                <span v-if="teachers">评阅教师：{{ teachers.reviewerName || '-' }}</span>
+                <span v-if="teachers">指导教师：{{ teachers?.supervisor?.teacherName || '-' }}</span>
+                <span v-if="teachers">评阅教师：{{ teachers?.reviewer?.teacherName || '-' }}</span>
               </div>
             </div>
 
@@ -402,21 +412,30 @@ onMounted(fetchStudents)
               </div>
               <el-form :model="form" label-width="120px" class="evaluate-form">
                 <el-form-item label="总评成绩">
-                  <el-input-number v-model="form.score" :min="0" :max="100" :precision="2" size="large"
-                    :controls="false" />
-                  <span class="form-tip">分（满分100分），所有环节完成后自动计算</span>
+                  <el-input-number v-model="form.score" :min="0" :max="100" :precision="0" size="large"
+                    :controls="false" :disabled="(!canSubmit && !form.recordId) || !canEditScore"
+                    style="width: 200px;" />
+                  <span class="form-tip">分</span>
                 </el-form-item>
                 <el-form-item label="评定等级">
-                  <el-select v-model="form.grade" placeholder="自动计算" size="large" style="width: 200px;">
+                  <el-select v-model="form.grade" placeholder="自动计算" size="large" style="width: 200px;"
+                    :disabled="(!canSubmit && !form.recordId) || !canEditScore">
                     <el-option v-for="g in gradeOptions" :key="g" :label="g" :value="g" />
                   </el-select>
                 </el-form-item>
                 <el-form-item label="答辩委员会评语">
-                  <el-input v-model="form.comment" type="textarea" :rows="6" placeholder="请输入答辩委员会评语" />
+                  <el-input v-model="form.comment" type="textarea" :rows="6" placeholder="请输入答辩委员会评语"
+                    :disabled="!canSubmit && !form.recordId" />
                 </el-form-item>
                 <el-form-item>
-                  <el-button type="primary" size="large" @click="handleSubmit">
+                  <el-button type="primary" size="large" @click="handleSubmit" :disabled="!canSubmit && !form.recordId">
                     {{ form.recordId ? '修改评定' : '提交评定' }}
+                  </el-button>
+                  <el-button v-if="!canEditScore" size="large" type="warning" plain @click="unlockEdit"
+                    style="margin-left: 12px;">
+                    <el-icon>
+                      <Unlock />
+                    </el-icon> 手动修改成绩
                   </el-button>
                 </el-form-item>
               </el-form>
