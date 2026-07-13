@@ -1,6 +1,9 @@
 package com.example.graduationevaluationsystem.service.impl;
 
+import com.example.graduationevaluationsystem.entity.Admin;
+import com.example.graduationevaluationsystem.entity.GroupMapping;
 import com.example.graduationevaluationsystem.entity.Student;
+import com.example.graduationevaluationsystem.entity.Teacher;
 import com.example.graduationevaluationsystem.service.*;
 import com.example.graduationevaluationsystem.vo.*;
 import jakarta.servlet.http.HttpServletResponse;
@@ -34,6 +37,10 @@ public class ManualExportServiceImpl implements ManualExportService {
     private final DocumentService documentService;
     private final ScoreRecordService scoreRecordService;
     private final StudentGroupService studentGroupService;
+    private final TeacherService teacherService;
+    private final GroupMappingService groupMappingService;
+    private final TeacherGroupService teacherGroupService;
+    private final AdminService adminService;
 
     private static final String CONTENT_SPLIT = "\n\n=====基本要求=====\n\n";
     private static final String TEMPLATE_PATH = "templates/handbook-template.docx";
@@ -142,6 +149,7 @@ public class ManualExportServiceImpl implements ManualExportService {
                 String entryName = entry.getName();
                 if ("word/document.xml".equals(entryName)) {
                     String xml = new String(entryData, StandardCharsets.UTF_8);
+                    xml = removeUnwantedGuideText(xml);
                     xml = replacePlaceholders(xml, placeholders);
                     entryData = xml.getBytes(StandardCharsets.UTF_8);
                 }
@@ -192,6 +200,11 @@ public class ManualExportServiceImpl implements ManualExportService {
         String supervisorTitle = "";
         if (teachers != null && teachers.getSupervisor() != null) {
             supervisorName = nvl(teachers.getSupervisor().getTeacherName());
+            // 查询 Teacher 实体获取职称
+            Teacher supervisor = teacherService.getById(teachers.getSupervisor().getTeacherNo());
+            if (supervisor != null) {
+                supervisorTitle = nvl(supervisor.getTitle());
+            }
         }
         m.put("a", supervisorName);
         m.put("b", supervisorTitle);
@@ -229,6 +242,23 @@ public class ManualExportServiceImpl implements ManualExportService {
         for (char ch = 'm'; ch <= 'z'; ch++) {
             m.put(String.valueOf(ch), "");
         }
+
+        // 获取超管姓名（用于系主任签字、院长签字等）
+        String adminName = "";
+        Admin admin = adminService.lambdaQuery()
+            .eq(Admin::getAccountStatus, 1)
+            .last("LIMIT 1")
+            .one();
+        if (admin != null) {
+            adminName = nvl(admin.getAdminName());
+        }
+
+        // ${m} 导师签字 = 指导教师姓名
+        m.put("m", supervisorName);
+        // ${r} 系主任签字 = 超管姓名
+        m.put("r", adminName);
+        // ${w} 院长签字 = 超管姓名
+        m.put("w", adminName);
 
         // ---- 指导书 ----
         DocumentVO guideDoc = docMap.get("指导书");
@@ -286,15 +316,56 @@ public class ManualExportServiceImpl implements ManualExportService {
         m.put("ag", getSubScore(rvSubScores, 3));
         m.put("ah", getScore(reviewerRecord));
         m.put("ai", getComment(reviewerRecord));
-        m.put("aj", getRecorderName(reviewerRecord));
+        // ${aj} 评阅教师签字 - 优先使用评阅教师姓名，其次用录入人
+        String reviewerName = "";
+        if (teachers != null && teachers.getReviewer() != null) {
+            reviewerName = nvl(teachers.getReviewer().getTeacherName());
+        }
+        if (reviewerName.isEmpty()) {
+            reviewerName = getRecorderName(reviewerRecord);
+        }
+        m.put("aj", reviewerName);
         setDatePlaceholders(m, reviewerRecord, "ak", "al", "am");
 
         // ---- 答辩记录 ----
         ScoreRecordVO defenseRecordRecord = recordMap.get("答辩记录");
+
+        // 提前查询答辩小组教师信息（用于答辩记录和答辩成绩两部分）
+        String defenseLeaderName = "";
+        String defenseSecretaryName = "";
+        String defenseMemberNames = "";
+        if (student != null && student.getStudentGroupId() != null) {
+            GroupMapping mapping = groupMappingService.lambdaQuery()
+                .eq(GroupMapping::getStage, "答辩")
+                .eq(GroupMapping::getStudentGroupId, student.getStudentGroupId())
+                .one();
+            if (mapping != null && mapping.getTeacherGroupId() != null) {
+                TeacherGroupVO tg = teacherGroupService.getGroupById(mapping.getTeacherGroupId());
+                if (tg != null) {
+                    defenseLeaderName = nvl(tg.getLeaderName());
+                    defenseSecretaryName = nvl(tg.getSecretaryName());
+                    StringBuilder members = new StringBuilder();
+                    if (tg.getSecretaryName() != null && !tg.getSecretaryName().isEmpty()) {
+                        members.append(tg.getSecretaryName());
+                    }
+                    if (tg.getMemberName() != null && !tg.getMemberName().isEmpty()) {
+                        if (members.length() > 0) members.append("、");
+                        members.append(tg.getMemberName());
+                    }
+                    defenseMemberNames = members.toString();
+                }
+            }
+        }
+
         // ${an} 答辩日期  ${ao} 学生姓名  ${ap} 记录人  ${aq} 记录内容
         m.put("an", getRecordTime(defenseRecordRecord));
         m.put("ao", student != null ? nvl(student.getStudentName()) : "");
-        m.put("ap", getRecorderName(defenseRecordRecord));
+        // ${ap} 记录人 - 优先用录入人，其次用答辩小组秘书
+        String recorderName = getRecorderName(defenseRecordRecord);
+        if (recorderName.isEmpty()) {
+            recorderName = defenseSecretaryName;
+        }
+        m.put("ap", recorderName);
         String defenseContent = "";
         if (defenseRecordRecord != null) {
             defenseContent = nvl(defenseRecordRecord.getDefenseRecord());
@@ -309,11 +380,9 @@ public class ManualExportServiceImpl implements ManualExportService {
         // ${ar} 答辩成绩  ${as} 评语  ${at} 组长签字  ${au} 成员签字  ${av}~${ax} 年月日
         m.put("ar", getScore(defenseScoreRecord));
         m.put("as", getComment(defenseScoreRecord));
-        m.put("at", "");
-        m.put("au", "");
-        m.put("av", "");
-        m.put("aw", "");
-        m.put("ax", "");
+        m.put("at", defenseLeaderName);
+        m.put("au", defenseMemberNames);
+        setDatePlaceholders(m, defenseScoreRecord, "av", "aw", "ax");
 
         // ---- 答辩委员会总评 ----
         ScoreRecordVO committeeRecord = recordMap.get("委员会评定");
@@ -334,10 +403,86 @@ public class ManualExportServiceImpl implements ManualExportService {
         m.put("bk", getScore(committeeRecord));
         m.put("bl", committeeRecord != null ? nvl(committeeRecord.getGrade()) : "");
         m.put("bm", getComment(committeeRecord));
-        m.put("bn", "");
-        m.put("bo", "");
+        m.put("bn", adminName);
+        m.put("bo", adminName);
 
         return m;
+    }
+
+    // ==================== 指导书固定文字删除 ====================
+
+    /**
+     * 删除指导书中"二、实施安排"到"七、其他"之间的固定描述文字。
+     * 保留 ${B}~${G} 占位符，仅清除固定模板文字。
+     */
+    private String removeUnwantedGuideText(String xml) {
+        // 定位起始：包含"二、实施安排"的 <w:t> 元素
+        String startMarker = "\u4e8c\u3001\u5b9e\u65bd\u5b89\u6392";
+        int startIdx = xml.indexOf(startMarker);
+        if (startIdx < 0) return xml;
+        // 向前找到 <w:t> 或 <w:t (带属性) 标签开头，不能匹配 <w:tabs> 等
+        int wt1 = xml.lastIndexOf("<w:t>", startIdx);
+        int wt2 = xml.lastIndexOf("<w:t ", startIdx);
+        int wtStart = Math.max(wt1, wt2);
+        if (wtStart < 0) return xml;
+
+        // 定位结束：包含 "${G}" 的 </w:t> 标签之后
+        String endMarker = "${G}";
+        int endIdx = xml.indexOf(endMarker, startIdx);
+        if (endIdx < 0) return xml;
+        int wtEnd = xml.indexOf("</w:t>", endIdx);
+        if (wtEnd < 0) return xml;
+        wtEnd += "</w:t>".length();
+
+        // 提取要处理的区段
+        String section = xml.substring(wtStart, wtEnd);
+
+        // 逐个处理 <w:t> 元素：含占位符的只保留占位符，其余清空文字
+        // 注意：正则只匹配 <w:t> 或 <w:t 属性...>，不匹配 <w:tabs> 等
+        java.util.regex.Pattern wtPattern = java.util.regex.Pattern.compile(
+            "(<w:t(?:\\s[^>]*)??>)(.*?)(</w:t>)", java.util.regex.Pattern.DOTALL);
+        java.util.regex.Matcher m = wtPattern.matcher(section);
+        StringBuffer result = new StringBuffer();
+        java.util.regex.Pattern placeholderPattern = java.util.regex.Pattern.compile(
+            "\\$\\{[B-G]\\}");
+        while (m.find()) {
+            String openTag = m.group(1);
+            String text = m.group(2);
+            String closeTag = m.group(3);
+            java.util.regex.Matcher pm = placeholderPattern.matcher(text);
+            if (pm.find()) {
+                // 保留占位符，删除其余文字
+                m.appendReplacement(result, java.util.regex.Matcher.quoteReplacement(
+                    openTag + pm.group() + closeTag));
+            } else {
+                // 清空文字
+                m.appendReplacement(result, java.util.regex.Matcher.quoteReplacement(
+                    openTag + closeTag));
+            }
+        }
+        m.appendTail(result);
+
+        // 清除文字后，删除空段落（没有文字内容的 <w:p>）以消除空白
+        String cleared = result.toString();
+        java.util.regex.Pattern pPattern = java.util.regex.Pattern.compile(
+            "<w:p[^>]*>.*?</w:p>", java.util.regex.Pattern.DOTALL);
+        java.util.regex.Matcher pm = pPattern.matcher(cleared);
+        StringBuffer pr = new StringBuffer();
+        java.util.regex.Pattern nonEmptyText = java.util.regex.Pattern.compile(
+            "<w:t(?:\\s[^>]*)??>[^<]+</w:t>");
+        while (pm.find()) {
+            String para = pm.group();
+            if (nonEmptyText.matcher(para).find()) {
+                // 段落有文字内容，保留
+                pm.appendReplacement(pr, java.util.regex.Matcher.quoteReplacement(para));
+            } else {
+                // 空段落，删除
+                pm.appendReplacement(pr, "");
+            }
+        }
+        pm.appendTail(pr);
+
+        return xml.substring(0, wtStart) + pr.toString() + xml.substring(wtEnd);
     }
 
     // ==================== 占位符替换 ====================
@@ -351,6 +496,10 @@ public class ManualExportServiceImpl implements ManualExportService {
      * 因为模板已经 merge runs，占位符不会跨 run。
      */
     private String replacePlaceholders(String xml, Map<String, String> placeholders) {
+        // 预处理：修复被 XML 标签分割的占位符
+        // 例如: ${a</w:t><w:t>j} 会被修复为 ${aj}
+        xml = fixSplitPlaceholders(xml);
+
         // 按占位符 key 长度降序排序，避免 ${a} 先匹配到 ${aa} 的子串
         List<String> sortedKeys = new java.util.ArrayList<>(placeholders.keySet());
         sortedKeys.sort((a, b) -> b.length() - a.length());
@@ -368,6 +517,30 @@ public class ManualExportServiceImpl implements ManualExportService {
             xml = xml.replaceAll(pattern, java.util.regex.Matcher.quoteReplacement(value));
         }
         return xml;
+    }
+
+    /**
+     * 修复被 XML 标签分割的占位符。
+     * <p>
+     * Word XML 中，占位符如 ${aj} 可能被分割在多个 <w:t> 元素中：
+     * <w:t>${a</w:t></w:r><w:r><w:t>j}</w:t>
+     * <p>
+     * 此方法查找所有 ${...} 模式（即使跨越 XML 标签），
+     * 去除其中的 XML 标签得到纯 key，然后用干净的 ${key} 替换。
+     */
+    private String fixSplitPlaceholders(String xml) {
+        java.util.regex.Pattern splitFix = java.util.regex.Pattern.compile(
+            "\\$\\{(.*?)\\}", java.util.regex.Pattern.DOTALL);
+        java.util.regex.Matcher m = splitFix.matcher(xml);
+        StringBuffer fixed = new StringBuffer();
+        while (m.find()) {
+            String rawContent = m.group(1);
+            // 去除 XML 标签，得到纯占位符 key
+            String cleanKey = rawContent.replaceAll("<[^>]*>", "");
+            m.appendReplacement(fixed, java.util.regex.Matcher.quoteReplacement("${" + cleanKey + "}"));
+        }
+        m.appendTail(fixed);
+        return fixed.toString();
     }
 
     // ==================== 辅助方法 ====================
@@ -423,7 +596,12 @@ public class ManualExportServiceImpl implements ManualExportService {
      */
     private String getScore(ScoreRecordVO record) {
         if (record != null && record.getScore() != null) {
-            return record.getScore().toPlainString();
+            String s = record.getScore().toPlainString();
+            // 去掉多余小数点，如 9.00 -> 9, 9.50 -> 9.5
+            if (s.contains(".")) {
+                s = s.replaceAll("0+$", "").replaceAll("\\.$", "");
+            }
+            return s;
         }
         return "";
     }
