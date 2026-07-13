@@ -265,8 +265,9 @@ onMounted(loadData)
 }
 
 .welcome-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
+  margin-top: 16px;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #1e40af;
 }
 
 :deep(.welcome-card .el-card__body) {
@@ -277,31 +278,31 @@ onMounted(loadData)
   display: flex;
   align-items: center;
   gap: 20px;
-  color: white;
 }
 
 .welcome-avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 40px;
+  color: white;
   flex-shrink: 0;
 }
 
 .welcome-text h2 {
   margin: 0;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 600;
+  color: #1e293b;
 }
 
 .welcome-info {
   margin: 8px 0 0 0;
-  opacity: 0.9;
   font-size: 14px;
+  color: #64748b;
 }
 
 .stats-row {
@@ -311,11 +312,15 @@ onMounted(loadData)
 .stat-card {
   height: 100%;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
 }
 
 .stat-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-color: #1e40af;
 }
 
 .stat-content {
@@ -325,32 +330,33 @@ onMounted(loadData)
 }
 
 .stat-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
-  color: white;
   flex-shrink: 0;
 }
 
 .progress-icon {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  background-color: #dbeafe;
+  color: #1e40af;
 }
 
 .score-icon {
-  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  background-color: #fef3c7;
+  color: #d97706;
 }
 
 .info-icon {
-  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-  color: #666 !important;
+  background-color: #fee2e2;
+  color: #dc2626;
 }
 
 .manual-icon {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: #dcfce7;
+  color: #166534;
 }
 
 .stat-info {
@@ -358,30 +364,31 @@ onMounted(loadData)
 }
 
 .stat-label {
-  font-size: 14px;
-  color: #909399;
+  font-size: 13px;
+  color: #64748b;
   margin-bottom: 4px;
+  font-weight: 500;
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 700;
-  color: #303133;
+  color: #1e293b;
   line-height: 1.2;
 }
 
 .score-value {
-  color: #f56c6c;
+  color: #d97706;
 }
 
 .action-text {
-  color: #409eff;
-  font-size: 24px;
+  color: #1e40af;
+  font-size: 22px;
 }
 
 .stat-progress-text {
   font-size: 12px;
-  color: #909399;
+  color: #64748b;
   margin-top: 4px;
 }
 
@@ -391,18 +398,28 @@ onMounted(loadData)
 
 .stat-sub {
   font-size: 13px;
-  color: #909399;
+  color: #64748b;
   margin-top: 6px;
 }
 
 .progress-card,
 .shortcut-card {
   margin-bottom: 16px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.progress-card :deep(.el-card__header),
+.shortcut-card :deep(.el-card__header) {
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 20px;
 }
 
 .card-header {
   font-weight: 600;
-  font-size: 16px;
+  font-size: 15px;
+  color: #1e293b;
 }
 
 .progress-grid {
@@ -417,20 +434,25 @@ onMounted(loadData)
   align-items: center;
   gap: 8px;
   padding: 16px 12px;
-  background-color: #f5f7fa;
+  background-color: #f8fafc;
   border-radius: 8px;
-  border: 2px solid transparent;
-  transition: all 0.2s;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.progress-item:hover {
+  border-color: #1e40af;
+  background-color: #eff6ff;
 }
 
 .progress-item.success {
-  background-color: #f0f9eb;
-  border-color: #e1f3d8;
+  background-color: #f0fdf4;
+  border-color: #bbf7d0;
 }
 
 .progress-item.info {
-  background-color: #f4f4f5;
-  border-color: #e9e9eb;
+  background-color: #f8fafc;
+  border-color: #e2e8f0;
 }
 
 .progress-status {
@@ -438,16 +460,16 @@ onMounted(loadData)
 }
 
 .check-icon {
-  color: #67c23a;
+  color: #166534;
 }
 
 .pending-icon {
-  color: #909399;
+  color: #94a3b8;
 }
 
 .progress-name {
   font-size: 14px;
-  color: #303133;
+  color: #334155;
   font-weight: 500;
   text-align: center;
 }
@@ -465,31 +487,31 @@ onMounted(loadData)
   padding: 12px 8px;
   cursor: pointer;
   border-radius: 6px;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
 }
 
 .shortcut-item:hover {
-  background-color: #f5f7fa;
+  background-color: #f1f5f9;
 }
 
 .shortcut-icon {
   width: 44px;
   height: 44px;
-  border-radius: 10px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  color: white;
   flex-shrink: 0;
 }
 
 .profile-icon {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  background-color: #dbeafe;
+  color: #1e40af;
 }
 
 .manual-shortcut-icon {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: #dcfce7;
+  color: #166534;
 }
 
 .shortcut-info {
@@ -499,21 +521,22 @@ onMounted(loadData)
 .shortcut-title {
   font-size: 15px;
   font-weight: 600;
-  color: #303133;
+  color: #1e293b;
   margin-bottom: 2px;
 }
 
 .shortcut-desc {
   font-size: 12px;
-  color: #909399;
+  color: #64748b;
 }
 
 .arrow-icon {
-  color: #c0c4cc;
+  color: #94a3b8;
   font-size: 16px;
 }
 
 :deep(.el-divider) {
   margin: 0;
+  border-color: #e5e7eb;
 }
 </style>

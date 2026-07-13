@@ -23,14 +23,14 @@ const stats = reactive({
 })
 
 const quickLinks = [
-  { name: '学生管理', icon: User, path: '/admin/students', color: '#409eff' },
-  { name: '教师管理', icon: UserFilled, path: '/admin/teachers', color: '#67c23a' },
-  { name: '学生分组', icon: OfficeBuilding, path: '/admin/student-groups', color: '#e6a23c' },
-  { name: '教师分组', icon: Collection, path: '/admin/teacher-groups', color: '#f56c6c' },
-  { name: '教师分配', icon: EditPen, path: '/admin/teacher-student', color: '#909399' },
-  { name: '环节分配', icon: Reading, path: '/admin/group-mappings', color: '#b37feb' },
-  { name: '评价手册查看', icon: DocumentCopy, path: '/admin/manual-review', color: '#36cfc9' },
-  { name: '答辩委员会评定', icon: Check, path: '/admin/committee-evaluation', color: '#ff7a45' }
+  { name: '学生管理', icon: User, path: '/admin/students' },
+  { name: '教师管理', icon: UserFilled, path: '/admin/teachers' },
+  { name: '学生分组', icon: OfficeBuilding, path: '/admin/student-groups' },
+  { name: '教师分组', icon: Collection, path: '/admin/teacher-groups' },
+  { name: '教师分配', icon: EditPen, path: '/admin/teacher-student' },
+  { name: '环节分配', icon: Reading, path: '/admin/group-mappings' },
+  { name: '评价手册查看', icon: DocumentCopy, path: '/admin/manual-review' },
+  { name: '答辩委员会评定', icon: Check, path: '/admin/committee-evaluation' }
 ]
 
 async function loadStats() {
@@ -106,17 +106,24 @@ onMounted(() => {
     <el-page-header title="控制台" :icon="null" />
 
     <div class="welcome-section">
-      <div class="welcome-text">
-        <h2>欢迎回来，{{ userStore.name }}</h2>
-        <p>您是超级管理员</p>
+      <div class="welcome-content">
+        <div class="welcome-avatar">
+          <el-icon :size="36">
+            <UserFilled />
+          </el-icon>
+        </div>
+        <div class="welcome-text">
+          <h2>{{ userStore.name }}，欢迎回来</h2>
+          <p>工号：{{ userStore.username }} · 超级管理员</p>
+        </div>
       </div>
     </div>
 
     <el-row :gutter="16" class="stats-row">
       <el-col :xs="12" :sm="8" :md="4">
-        <el-card shadow="hover" class="stat-card" @click="goTo('/admin/students')">
-          <div class="stat-icon" style="background: #ecf5ff; color: #409eff;">
-            <el-icon size="28">
+        <el-card shadow="never" class="stat-card" @click="goTo('/admin/students')">
+          <div class="stat-icon">
+            <el-icon size="26">
               <User />
             </el-icon>
           </div>
@@ -127,9 +134,9 @@ onMounted(() => {
         </el-card>
       </el-col>
       <el-col :xs="12" :sm="8" :md="4">
-        <el-card shadow="hover" class="stat-card" @click="goTo('/admin/teachers')">
-          <div class="stat-icon" style="background: #f0f9ff; color: #67c23a;">
-            <el-icon size="28">
+        <el-card shadow="never" class="stat-card" @click="goTo('/admin/teachers')">
+          <div class="stat-icon">
+            <el-icon size="26">
               <UserFilled />
             </el-icon>
           </div>
@@ -140,9 +147,9 @@ onMounted(() => {
         </el-card>
       </el-col>
       <el-col :xs="12" :sm="8" :md="4">
-        <el-card shadow="hover" class="stat-card" @click="goTo('/admin/student-groups')">
-          <div class="stat-icon" style="background: #fdf6ec; color: #e6a23c;">
-            <el-icon size="28">
+        <el-card shadow="never" class="stat-card" @click="goTo('/admin/student-groups')">
+          <div class="stat-icon">
+            <el-icon size="26">
               <OfficeBuilding />
             </el-icon>
           </div>
@@ -153,9 +160,9 @@ onMounted(() => {
         </el-card>
       </el-col>
       <el-col :xs="12" :sm="8" :md="4">
-        <el-card shadow="hover" class="stat-card" @click="goTo('/admin/teacher-groups')">
-          <div class="stat-icon" style="background: #fef0f0; color: #f56c6c;">
-            <el-icon size="28">
+        <el-card shadow="never" class="stat-card" @click="goTo('/admin/teacher-groups')">
+          <div class="stat-icon">
+            <el-icon size="26">
               <Collection />
             </el-icon>
           </div>
@@ -166,9 +173,9 @@ onMounted(() => {
         </el-card>
       </el-col>
       <el-col :xs="12" :sm="8" :md="4">
-        <el-card shadow="hover" class="stat-card" @click="goTo('/admin/committee-evaluation')">
-          <div class="stat-icon" style="background: #fff7e6; color: #ff7a45;">
-            <el-icon size="28">
+        <el-card shadow="never" class="stat-card" @click="goTo('/admin/committee-evaluation')">
+          <div class="stat-icon pending-icon">
+            <el-icon size="26">
               <WarningFilled />
             </el-icon>
           </div>
@@ -179,9 +186,9 @@ onMounted(() => {
         </el-card>
       </el-col>
       <el-col :xs="12" :sm="8" :md="4">
-        <el-card shadow="hover" class="stat-card" @click="goTo('/admin/committee-evaluation')">
-          <div class="stat-icon" style="background: #e6fffb; color: #36cfc9;">
-            <el-icon size="28">
+        <el-card shadow="never" class="stat-card" @click="goTo('/admin/committee-evaluation')">
+          <div class="stat-icon completed-icon">
+            <el-icon size="26">
               <Check />
             </el-icon>
           </div>
@@ -205,8 +212,8 @@ onMounted(() => {
           </template>
           <div class="quick-links">
             <div v-for="link in quickLinks" :key="link.path" class="quick-link-item" @click="goTo(link.path)">
-              <div class="link-icon" :style="{ background: link.color + '15', color: link.color }">
-                <el-icon size="22">
+              <div class="link-icon">
+                <el-icon size="20">
                   <component :is="link.icon" />
                 </el-icon>
               </div>
@@ -247,21 +254,41 @@ onMounted(() => {
 .welcome-section {
   margin: 20px 0;
   padding: 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: #ffffff;
   border-radius: 8px;
+  border-left: 4px solid #1e40af;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.welcome-content {
+  display: flex;
+  align-items: center;
+}
+
+.welcome-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: white;
+  margin-right: 16px;
+  flex-shrink: 0;
 }
 
 .welcome-text h2 {
-  margin: 0 0 8px 0;
-  font-size: 24px;
+  margin: 0 0 6px 0;
+  font-size: 20px;
   font-weight: 600;
+  color: #1e293b;
 }
 
 .welcome-text p {
   margin: 0;
   font-size: 14px;
-  opacity: 0.9;
+  color: #64748b;
 }
 
 .stats-row {
@@ -271,32 +298,44 @@ onMounted(() => {
 .stat-card {
   cursor: pointer;
   margin-bottom: 16px;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  padding: 4px;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
 }
 
 .stat-card:hover {
   transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-color: #1e40af;
 }
 
 .stat-card :deep(.el-card__body) {
   display: flex;
   align-items: center;
-  width: 100%;
-  padding-left: 40px;
+  padding: 20px;
 }
 
 .stat-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-right: 16px;
   flex-shrink: 0;
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.stat-icon.pending-icon {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.stat-icon.completed-icon {
+  background-color: #dcfce7;
+  color: #166534;
 }
 
 .stat-content {
@@ -304,24 +343,25 @@ onMounted(() => {
 }
 
 .stat-value {
-  font-size: 28px;
-  font-weight: 600;
-  color: #303133;
+  font-size: 26px;
+  font-weight: 700;
+  color: #1e293b;
   line-height: 1.2;
 }
 
 .stat-value.pending {
-  color: #ff7a45;
+  color: #d97706;
 }
 
 .stat-value.completed {
-  color: #36cfc9;
+  color: #166534;
 }
 
 .stat-label {
-  font-size: 14px;
-  color: #909399;
+  font-size: 13px;
+  color: #64748b;
   margin-top: 4px;
+  font-weight: 500;
 }
 
 .content-row {
@@ -331,52 +371,71 @@ onMounted(() => {
 .section-card {
   margin-bottom: 16px;
   height: 100%;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.section-card :deep(.el-card__header) {
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 20px;
 }
 
 .card-header {
   font-weight: 600;
-  font-size: 16px;
+  font-size: 15px;
   display: flex;
   align-items: center;
+  color: #1e293b;
 }
 
 .quick-links {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  gap: 12px;
 }
 
 .quick-link-item {
   text-align: center;
   cursor: pointer;
   padding: 16px 8px;
-  border-radius: 8px;
-  transition: all 0.2s;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
 }
 
 .quick-link-item:hover {
-  background: #f5f7fa;
+  background-color: #f1f5f9;
+  border-color: #1e40af;
+  transform: translateY(-1px);
 }
 
 .link-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 8px;
+  background-color: #eff6ff;
+  color: #1e40af;
 }
 
 .link-name {
   font-size: 13px;
-  color: #606266;
+  color: #475569;
+  font-weight: 500;
+}
+
+.intro-content {
+  padding: 4px 0;
 }
 
 .intro-content p {
   margin: 0 0 12px 0;
   line-height: 1.8;
-  color: #606266;
+  color: #475569;
   font-size: 14px;
 }
 
@@ -384,17 +443,32 @@ onMounted(() => {
   margin: 0 0 12px 0;
   padding-left: 20px;
   line-height: 2;
-  color: #606266;
+  color: #475569;
   font-size: 14px;
 }
 
 .intro-content li strong {
-  color: #303133;
+  color: #1e293b;
+  font-weight: 600;
 }
 
 @media (max-width: 768px) {
   .quick-links {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat-card :deep(.el-card__body) {
+    padding: 16px;
+  }
+
+  .stat-icon {
+    width: 44px;
+    height: 44px;
+    margin-right: 12px;
+  }
+
+  .stat-value {
+    font-size: 22px;
   }
 }
 </style>

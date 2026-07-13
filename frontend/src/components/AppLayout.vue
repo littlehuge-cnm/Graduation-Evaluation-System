@@ -128,10 +128,13 @@ function handleSelect(index) {
   <el-container class="layout-container">
     <el-aside width="220px" class="layout-aside">
       <div class="logo">
-        <span>毕业设计评价系统</span>
+        <div class="logo-icon">
+          <el-icon :size="24"><School /></el-icon>
+        </div>
+        <span class="logo-text">毕设评价系统</span>
       </div>
-      <el-menu :default-active="activeMenu" class="layout-menu" background-color="#304156" text-color="#bfcbd9"
-        active-text-color="#409EFF" @select="handleSelect">
+      <el-menu :default-active="activeMenu" class="layout-menu" background-color="#0f172a" text-color="#94a3b8"
+        active-text-color="#ffffff" @select="handleSelect">
         <template v-for="menu in menus" :key="menu.index || menu.title">
           <el-sub-menu v-if="menu.children" :index="menu.title">
             <template #title>
@@ -161,10 +164,23 @@ function handleSelect(index) {
       <el-header class="layout-header">
         <div class="header-title">{{ title }}</div>
         <div class="header-right">
-          <span class="username">{{ userStore.name }}（{{ userStore.username }}）</span>
-          <el-button type="danger" :icon="SwitchButton" link @click="handleLogout">
-            退出登录
-          </el-button>
+          <el-dropdown trigger="click">
+            <div class="user-info">
+              <div class="user-avatar">
+                <el-icon :size="18"><UserFilled /></el-icon>
+              </div>
+              <span class="username">{{ userStore.name }}</span>
+              <span class="user-id">({{ userStore.username }})</span>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="handleLogout" divided>
+                  <el-icon style="margin-right: 8px;"><SwitchButton /></el-icon>
+                  退出登录
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </el-header>
 
@@ -181,49 +197,142 @@ function handleSelect(index) {
 }
 
 .layout-aside {
-  background-color: #304156;
+  background-color: #0f172a;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  z-index: 10;
 }
 
 .logo {
-  height: 60px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   color: #fff;
-  font-size: 18px;
-  font-weight: bold;
-  border-bottom: 1px solid #1f2d3d;
+  border-bottom: 1px solid #1e293b;
+  padding: 0 16px;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.logo-text {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .layout-menu {
   border-right: none;
+  background-color: #0f172a;
+}
+
+.layout-menu:not(.el-menu--collapse) {
+  width: 220px;
+}
+
+:deep(.el-menu-item),
+:deep(.el-sub-menu__title) {
+  height: 48px;
+  line-height: 48px;
+  transition: all 0.2s ease;
+}
+
+:deep(.el-menu-item:hover),
+:deep(.el-sub-menu__title:hover) {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+}
+
+:deep(.el-menu-item.is-active) {
+  background-color: #1e40af !important;
+  color: #ffffff !important;
+  border-right: 3px solid #3b82f6;
+}
+
+:deep(.el-sub-menu .el-menu-item) {
+  background-color: #0c1322 !important;
+  padding-left: 52px !important;
+}
+
+:deep(.el-sub-menu .el-menu-item:hover) {
+  background-color: #1e293b !important;
+}
+
+:deep(.el-sub-menu .el-menu-item.is-active) {
+  background-color: #1e3a8a !important;
 }
 
 .layout-header {
-  background-color: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 0 24px;
+  height: 64px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .header-title {
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 600;
+  color: #1e293b;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.user-info:hover {
+  background-color: #f1f5f9;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
 }
 
 .username {
-  color: #606266;
+  color: #1e293b;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.user-id {
+  color: #64748b;
+  font-size: 13px;
 }
 
 .layout-main {
-  background-color: #f0f2f5;
+  background-color: #f3f4f6;
   overflow-y: auto;
+  padding: 20px;
 }
 </style>
